@@ -1,0 +1,14 @@
+estudio_rodera/
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+.env
+.env.example
+*.db
+main.py
+README.md

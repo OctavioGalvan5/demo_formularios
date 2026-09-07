@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión — LegalForms</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Lato', sans-serif;
+            background: linear-gradient(145deg, #1a5199 0%, #2176c7 55%, #5aaee0 100%);
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .card {
+            background: white; border-radius: 14px;
+            padding: 44px 40px; width: 100%; max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.22);
+        }
+        .logo { text-align: center; margin-bottom: 32px; }
+        .logo i { font-size: 2rem; color: #2176c7; }
+        .logo h1 { font-family: 'Playfair Display', serif; font-size: 1.65rem; font-weight: 700; color: #1a5199; margin: 8px 0 2px; letter-spacing: .02em; }
+        .logo p { font-size: .8rem; color: #90a8c0; margin: 0; }
+        .fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
+        .fg label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280; }
+        .fg input {
+            padding: 10px 12px; border: 1.5px solid #d1d5db; border-radius: 7px;
+            font-family: inherit; font-size: .92rem; color: #111827; transition: .2s; outline: none;
+        }
+        .fg input:focus { border-color: #2176c7; box-shadow: 0 0 0 3px rgba(33,118,199,0.12); }
+        .btn {
+            width: 100%; padding: 11px; background: #2176c7; color: white;
+            border: none; border-radius: 7px; font-family: inherit; font-size: .92rem;
+            font-weight: 700; cursor: pointer; transition: .15s; margin-top: 8px;
+        }
+        .btn:hover { background: #1865b0; }
+        .alert { padding: 10px 14px; border-radius: 7px; font-size: .84rem; margin-bottom: 16px; }
+        .alert-danger  { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .alert-warning { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+        .alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <i class="fas fa-file-signature"></i>
+        <h1>LegalForms</h1>
+        <p>Formularios legales con IA</p>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+    <form method="POST">
+        <div class="fg">
+            <label>Usuario</label>
+            <input type="text" name="username" autocomplete="username" autofocus required>
+        </div>
+        <div class="fg">
+            <label>Contraseña</label>
+            <input type="password" name="password" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn"><i class="fas fa-sign-in-alt"></i> &nbsp;Ingresar</button>
+    </form>
+</div>
+</body>
+</html>

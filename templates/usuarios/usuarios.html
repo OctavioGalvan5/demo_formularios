@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios — LegalForms{% endblock %}
+
+{% block extra_style %}
+.grid-2 { display: grid; grid-template-columns: 1fr 1.4fr; gap: 22px; align-items: start; }
+@media(max-width:900px) { .grid-2 { grid-template-columns: 1fr; } }
+.card-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #fafcff; border-radius: var(--radius) var(--radius) 0 0; }
+.card-header strong { font-size: .88rem; color: var(--texto); font-weight: 600; }
+.card-header .count { font-size: .78rem; color: var(--azul); margin-left: auto; background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+.card-table { padding: 0; overflow: hidden; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.chk-inline { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #f8fafc; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: .85rem; color: var(--texto2); user-select: none; }
+.chk-inline input { width: 16px; height: 16px; accent-color: var(--azul); }
+.badge-admin { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.badge-user { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left">
+        <h1 class="page-title"><i class="fas fa-user-shield" style="font-size:1.1rem;margin-right:8px;opacity:.7;"></i>Usuarios</h1>
+        <span class="page-subtitle">Gestión de cuentas y permisos</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="grid-2">
+
+        <div class="card">
+            <h3 class="card-title"><span class="card-title-bar"></span> Nuevo usuario</h3>
+            <form method="POST" action="{{ url_for('usuarios_crear') }}">
+                <div class="fg" style="margin-bottom:14px;">
+                    <label>Usuario</label>
+                    <input type="text" name="username" autocomplete="off" required>
+                </div>
+                <div class="fg" style="margin-bottom:14px;">
+                    <label>Nombre completo</label>
+                    <input type="text" name="fullname" autocomplete="off">
+                </div>
+                <div class="fg" style="margin-bottom:14px;">
+                    <label>Contraseña</label>
+                    <input type="password" name="password" autocomplete="new-password" required minlength="6">
+                </div>
+                <label class="chk-inline" style="margin-bottom:6px;">
+                    <input type="checkbox" name="is_admin" value="1">
+                    Es administrador (puede gestionar usuarios)
+                </label>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-user-plus"></i> Crear usuario
+                </button>
+            </form>
+        </div>
+
+        <div class="card card-table">
+            <div class="card-header">
+                <i class="fas fa-users" style="color:var(--azul);"></i>
+                <strong>Listado de usuarios</strong>
+                <span class="count">{{ usuarios|length }} usuario{{ 's' if usuarios|length != 1 else '' }}</span>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Rol</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in usuarios %}
+                    <tr>
+                        <td class="nombre">{{ u.username }}{% if u.id == current_user.id %} <span style="font-size:.72rem;color:var(--texto3);">(vos)</span>{% endif %}</td>
+                        <td>{{ u.fullname or '—' }}</td>
+                        <td>
+                            {% if u.is_admin %}
+                                <span class="badge badge-admin"><i class="fas fa-shield-alt"></i> Admin</span>
+                            {% else %}
+                                <span class="badge badge-user">Usuario</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="row-actions">
+                                <button type="button" class="btn btn-outline btn-sm"
+                                        onclick="abrirReset({{ u.id }}, '{{ u.username|e }}')">
+                                    <i class="fas fa-key"></i> Contraseña
+                                </button>
+                                {% if u.id != current_user.id %}
+                                <form method="POST" action="{{ url_for('usuarios_toggle_admin', id=u.id) }}" style="margin:0;">
+                                    <button type="submit" class="btn btn-gray btn-sm"
+                                            title="{{ 'Quitar rol admin' if u.is_admin else 'Convertir en admin' }}">
+                                        <i class="fas fa-user-shield"></i>
+                                        {{ 'Quitar admin' if u.is_admin else 'Hacer admin' }}
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('usuarios_eliminar', id=u.id) }}" style="margin:0;"
+                                      onsubmit="return confirm('¿Eliminar el usuario &quot;{{ u.username|e }}&quot;?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalReset">
+    <div class="modal">
+        <h3>Cambiar contraseña</h3>
+        <p>Definí una nueva contraseña para <strong id="resetUser"></strong>.</p>
+        <form method="POST" id="formReset">
+            <div class="fg" style="margin-bottom:14px;">
+                <label>Nueva contraseña</label>
+                <input type="password" name="password" required minlength="6" autocomplete="new-password">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-gray" onclick="cerrarReset()">Cancelar</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirReset(id, username) {
+    const modal = document.getElementById('modalReset');
+    document.getElementById('resetUser').textContent = username;
+    document.getElementById('formReset').action = '/usuarios/reset_password/' + id;
+    modal.classList.add('show');
+}
+function cerrarReset() {
+    document.getElementById('modalReset').classList.remove('show');
+}
+document.getElementById('modalReset').addEventListener('click', function(e) {
+    if (e.target === this) cerrarReset();
+});
+</script>
+{% endblock %}

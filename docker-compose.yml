@@ -1,0 +1,9 @@
+services:
+  legalforms:
+    build: .
+    container_name: legalforms-demo
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    restart: unless-stopped

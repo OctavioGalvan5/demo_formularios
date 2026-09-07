@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+{% block title %}{{ data_cliente.nombre or 'Cliente' }} {{ data_cliente.apellido or '' }} — LegalForms{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left">
+        <h1 class="page-title">
+            {{ data_cliente.nombre if data_cliente.nombre else 'Nuevo Cliente' }}
+            {{ data_cliente.apellido if data_cliente.apellido else '' }}
+        </h1>
+        <span class="page-subtitle">Ficha del cliente</span>
+        {% if is_admin %}
+        <span class="page-subtitle" style="display:block;margin-top:2px;font-size:.78rem;color:var(--texto3);">
+            <i class="fas fa-user-edit" style="opacity:.7;margin-right:4px;"></i>
+            Creado por: <strong>{{ data_cliente.created_by or '—' }}</strong>
+        </span>
+        {% endif %}
+    </div>
+    <a href="{{ url_for('consultas') }}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Volver</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="lov"><div class="lbox"><div class="spn"></div><p>Generando formularios...</p></div></div>
+
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <form action="{{ url_for('ver_cliente', id=data_cliente.id) }}" method="POST" id="clientForm">
+        <input type="hidden" name="id" value="{{ data_cliente.id }}">
+        <input type="hidden" name="nombre_completo" value="{{ data_cliente.nombre_completo }}">
+        <input type="hidden" name="nombre_completo_2" value="{{ data_cliente.nombre_completo_2 }}">
+        <input type="hidden" name="sexo_femenino" value="{{ data_cliente.sexo_femenino }}">
+        <input type="hidden" name="sexo_masculino" value="{{ data_cliente.sexo_masculino }}">
+
+        <div class="tabs-nav">
+            <button type="button" class="tab-btn active" data-tab="personal"><i class="fas fa-user"></i> Datos Personales</button>
+            <button type="button" class="tab-btn" data-tab="opciones"><i class="fas fa-list-check"></i> Opciones de Trámite</button>
+            <button type="button" class="tab-btn" data-tab="documentos"><i class="fas fa-file-contract"></i> Documentos</button>
+        </div>
+
+        <!-- DATOS PERSONALES -->
+        <div class="tab-panel active" id="tab-personal">
+            <div class="card">
+                <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-id-card"></i> Información Personal</h2>
+                <div class="form-grid">
+                    <div class="fg"><label>Nombre</label><input type="text" name="nombre" value="{{ data_cliente.nombre or '' }}"></div>
+                    <div class="fg"><label>Apellido</label><input type="text" name="apellido" value="{{ data_cliente.apellido or '' }}"></div>
+                    <div class="fg"><label>Celular</label><input type="text" name="numero_celular" value="{{ data_cliente.numero_celular or '' }}"></div>
+                    <div class="fg"><label>N° de DNI</label><input type="text" name="numero_dni" value="{{ data_cliente.numero_dni or '' }}"></div>
+                    <div class="fg"><label>N° de CUIL</label><input type="text" name="numero_cuil" value="{{ data_cliente.numero_cuil or '' }}"></div>
+                    <div class="fg">
+                        <label>Sexo</label>
+                        <select name="sexo">
+                            <option value="" {% if not data_cliente.sexo %}selected{% endif %}>Seleccionar</option>
+                            <option value="Masculino" {% if data_cliente.sexo == 'Masculino' %}selected{% endif %}>Masculino</option>
+                            <option value="Femenino"  {% if data_cliente.sexo == 'Femenino'  %}selected{% endif %}>Femenino</option>
+                        </select>
+                    </div>
+                    <div class="fg">
+                        <label>Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_de_nacimiento" value="{{ data_cliente.fecha_de_nacimiento or '' }}">
+                    </div>
+                    <div class="fg">
+                        <label>Fecha de Ingreso al País</label>
+                        <input type="date" name="fecha_de_ingreso" value="{{ data_cliente.fecha_de_ingreso or '' }}">
+                    </div>
+                    <div class="fg"><label>Nacionalidad</label><input type="text" name="nacionalidad" value="{{ data_cliente.nacionalidad or '' }}"></div>
+                </div>
+                <div class="section-label">Domicilio</div>
+                <div class="form-grid four">
+                    <div class="fg col-span-2"><label>Calle</label><input type="text" name="direccion" value="{{ data_cliente.direccion or '' }}"></div>
+                    <div class="fg"><label>Número</label><input type="text" name="numero_direccion" value="{{ data_cliente.numero_direccion or '' }}"></div>
+                    <div class="fg"><label>Ciudad</label><input type="text" name="ciudad" value="{{ data_cliente.ciudad or '' }}"></div>
+                    <div class="fg"><label>Departamento</label><input type="text" name="departamento" value="{{ data_cliente.departamento or '' }}"></div>
+                    <div class="fg"><label>Provincia</label><input type="text" name="provincia" value="{{ data_cliente.provincia or '' }}"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OPCIONES DE TRÁMITE -->
+        <div class="tab-panel" id="tab-opciones">
+            <div class="card">
+                <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-folder-open"></i> Tipo de Trámite</h2>
+                <p style="font-size:.85rem;color:var(--texto3);margin:0 0 16px">Seleccioná el trámite del cliente. Los documentos correspondientes se marcarán automáticamente.</p>
+                <div class="checkbox-grid">
+                    <label class="checkbox-item {% if data_cliente.formularios_reconocimiento_servicios %}checked{% endif %}"><input type="checkbox" id="formularios_Reconocimiento_de_Servicios" name="formularios_Reconocimiento_de_Servicios" {% if data_cliente.formularios_reconocimiento_servicios %}checked{% endif %}>Reconocimiento de Servicios</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación" name="formularios_Jubilación" {% if data_cliente.formularios_jubilacion %}checked{% endif %}>Jubilación</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_con_24_476 %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_con_24.476" name="formularios_Jubilación_con_24.476" {% if data_cliente.formularios_jubilacion_con_24_476 %}checked{% endif %}>Jubilación con Ley 24.476</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_con_27_705 %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_con_27.705" name="formularios_Jubilación_con_27.705" {% if data_cliente.formularios_jubilacion_con_27_705 %}checked{% endif %}>Jubilación con Ley 27.705</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_docente %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_docente" name="formularios_Jubilación_docente" {% if data_cliente.formularios_jubilacion_docente %}checked{% endif %}>Jubilación Docente</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_serv_diferenciales %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_serv_diferenciales" name="formularios_Jubilación_serv_diferenciales" {% if data_cliente.formularios_jubilacion_serv_diferenciales %}checked{% endif %}>Jubilación Serv. Diferenciales</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_servicio_domestico %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_Servicio_Doméstico" name="formularios_Jubilación_Servicio_Doméstico" {% if data_cliente.formularios_jubilacion_servicio_domestico %}checked{% endif %}>Jubilación Servicio Doméstico</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_hiv %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_HIV" name="formularios_Jubilación_HIV" {% if data_cliente.formularios_jubilacion_hiv %}checked{% endif %}>Jubilación HIV</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_minusvalidos_ceguera %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilación_trabajadores_minusvalidos_ceguera" name="formularios_Jubilación_trabajadores_minusvalidos_ceguera" {% if data_cliente.formularios_jubilacion_minusvalidos_ceguera %}checked{% endif %}>Jubilación Minusválidos / Ceguera</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_directa_casados %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_Directa_casados" name="formularios_Pension_Directa_casados" {% if data_cliente.formularios_pension_directa_casados %}checked{% endif %}>Pensión Directa (Casados)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_directa_convivientes %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_Directa_convivientes" name="formularios_Pension_Directa_convivientes" {% if data_cliente.formularios_pension_directa_convivientes %}checked{% endif %}>Pensión Directa (Convivientes)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_derivada_casados %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_Deriva_casados" name="formularios_Pension_Deriva_casados" {% if data_cliente.formularios_pension_derivada_casados %}checked{% endif %}>Pensión Derivada (Casados)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_derivada_convivientes %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_Deriva_convivientes" name="formularios_Pension_Deriva_convivientes" {% if data_cliente.formularios_pension_derivada_convivientes %}checked{% endif %}>Pensión Derivada (Convivientes)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_directa_derivada_hijo_discapacitada %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_Directa_Derivada_hijo_discapacitada" name="formularios_Pension_Directa_Derivada_hijo_discapacitada" {% if data_cliente.formularios_pension_directa_derivada_hijo_discapacitada %}checked{% endif %}>Pensión Directa/Derivada Hijo/a Discapacitado/a</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_retiro_transitorio_por_invalidez %}checked{% endif %}"><input type="checkbox" id="formularios_Retiro_Transitorio_por_invalidez" name="formularios_Retiro_Transitorio_por_invalidez" {% if data_cliente.formularios_retiro_transitorio_por_invalidez %}checked{% endif %}>Retiro Transitorio por Invalidez</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_retiro_transitorio_por_invalidez_sdm %}checked{% endif %}"><input type="checkbox" id="formularios_Retiro_Transitorio_por_invalidez_SDM" name="formularios_Retiro_Transitorio_por_invalidez_SDM" {% if data_cliente.formularios_retiro_transitorio_por_invalidez_sdm %}checked{% endif %}>Retiro Transitorio por Invalidez SDM</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_puam %}checked{% endif %}"><input type="checkbox" id="formularios_PUAM" name="formularios_PUAM" {% if data_cliente.formularios_puam %}checked{% endif %}>PUAM</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_ucap %}checked{% endif %}"><input type="checkbox" id="formularios_UCAP" name="formularios_UCAP" {% if data_cliente.formularios_ucap %}checked{% endif %}>UCAP</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_reajuste_de_haberes %}checked{% endif %}"><input type="checkbox" id="formularios_Reajuste_de_Haberes" name="formularios_Reajuste_de_Haberes" {% if data_cliente.formularios_reajuste_de_haberes %}checked{% endif %}>Reajuste de Haberes</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_asignacion_fliar_hijo_discapacitado %}checked{% endif %}"><input type="checkbox" id="formularios_asignacion_fliar_hijo_discapacitado" name="formularios_asignacion_fliar_hijo_discapacitado" {% if data_cliente.formularios_asignacion_fliar_hijo_discapacitado %}checked{% endif %}>Asignación Familiar Hijo Discapacitado</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_nueva %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilacion_nueva" name="formularios_Jubilacion_nueva" {% if data_cliente.formularios_jubilacion_nueva %}checked{% endif %}>Jubilación (Nueva)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_pc_nueva %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilacion_PC_nueva" name="formularios_Jubilacion_PC_nueva" {% if data_cliente.formularios_jubilacion_pc_nueva %}checked{% endif %}>Jubilación PC (Nueva)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_jubilacion_moratoria_nueva %}checked{% endif %}"><input type="checkbox" id="formularios_Jubilacion_Moratoria_nueva" name="formularios_Jubilacion_Moratoria_nueva" {% if data_cliente.formularios_jubilacion_moratoria_nueva %}checked{% endif %}>Jubilación Moratoria (Nueva)</label>
+                    <label class="checkbox-item {% if data_cliente.formularios_pension_nueva %}checked{% endif %}"><input type="checkbox" id="formularios_Pension_nueva" name="formularios_Pension_nueva" {% if data_cliente.formularios_pension_nueva %}checked{% endif %}>Pensión (Nueva)</label>
+                </div>
+            </div>
+        </div>
+
+        <!-- DOCUMENTOS -->
+        <div class="tab-panel" id="tab-documentos">
+            <div class="card">
+                <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-file-contract"></i> Documentos a Generar</h2>
+                <p style="font-size:.85rem;color:var(--texto3);margin:0 0 16px">Marcá los documentos a incluir en el ZIP.</p>
+
+                <div class="section-label">Formularios Generales</div>
+                <div class="checkbox-grid">
+                    <label class="checkbox-item {% if data_cliente._2_91_guarda_documental %}checked{% endif %}"><input type="checkbox" name="2.91_Guarda_Documental" id="2.91_Guarda_Documental" {% if data_cliente._2_91_guarda_documental %}checked{% endif %}>2.91 Guarda Documental</label>
+                    <label class="checkbox-item {% if data_cliente._6_18_solicitud_prestaciones_previsionales %}checked{% endif %}"><input type="checkbox" name="6.18_Solicitud_Prestaciones_Previsionales" id="6.18_Solicitud_Prestaciones_Previsionales" {% if data_cliente._6_18_solicitud_prestaciones_previsionales %}checked{% endif %}>6.18 Solicitud Prestaciones Previsionales</label>
+                    <label class="checkbox-item {% if data_cliente._6_18_solicitud_prestaciones_previsionales_pension %}checked{% endif %}"><input type="checkbox" name="6.18_Solicitud_Prestaciones_Previsionales_pension" id="6.18_Solicitud_Prestaciones_Previsionales_pension" {% if data_cliente._6_18_solicitud_prestaciones_previsionales_pension %}checked{% endif %}>6.18 Solicitud Prestaciones Previsionales (Pensión)</label>
+                    <label class="checkbox-item {% if data_cliente.anexo_baja_puam %}checked{% endif %}"><input type="checkbox" name="Anexo_Baja_Puam" id="Anexo_Baja_Puam" {% if data_cliente.anexo_baja_puam %}checked{% endif %}>Anexo Baja PUAM</label>
+                    <label class="checkbox-item {% if data_cliente.anexo_i_ley_27625 %}checked{% endif %}"><input type="checkbox" name="Anexo_I_Ley_27.625" id="Anexo_I_Ley_27.625" {% if data_cliente.anexo_i_ley_27625 %}checked{% endif %}>Anexo I Ley 27.625</label>
+                    <label class="checkbox-item {% if data_cliente.anexo_ii_dec_894_01 %}checked{% endif %}"><input type="checkbox" name="Anexo_II_DEC_894_01" id="Anexo_II_DEC_894_01" {% if data_cliente.anexo_ii_dec_894_01 %}checked{% endif %}>Anexo II DEC 894/01</label>
+                    <label class="checkbox-item {% if data_cliente.anexo_ii_980_05 %}checked{% endif %}"><input type="checkbox" name="Anexo_II_980_05" id="Anexo_II_980_05" {% if data_cliente.anexo_ii_980_05 %}checked{% endif %}>Anexo II 980/05</label>
+                    <label class="checkbox-item {% if data_cliente.anexo_ii_socioeconomico_24_476 %}checked{% endif %}"><input type="checkbox" name="Anexo_II_Socioeconómico_24.476" id="Anexo_II_Socioeconómico_24.476" {% if data_cliente.anexo_ii_socioeconomico_24_476 %}checked{% endif %}>Anexo II Socioeconómico 24.476</label>
+                    <label class="checkbox-item {% if data_cliente.baja_pnc %}checked{% endif %}"><input type="checkbox" name="Baja_PNC" id="Baja_PNC" {% if data_cliente.baja_pnc %}checked{% endif %}>Baja PNC</label>
+                    <label class="checkbox-item {% if data_cliente.carta_poder_srt %}checked{% endif %}"><input type="checkbox" name="Carta_Poder_SRT" id="Carta_Poder_SRT" {% if data_cliente.carta_poder_srt %}checked{% endif %}>Carta Poder SRT</label>
+                    <label class="checkbox-item {% if data_cliente.ddjj_de_salud_resol_300 %}checked{% endif %}"><input type="checkbox" name="DDJJ_de_salud_resol_300" id="DDJJ_de_salud_resol_300" {% if data_cliente.ddjj_de_salud_resol_300 %}checked{% endif %}>DDJJ de Salud Resol 300</label>
+                    <label class="checkbox-item {% if data_cliente.ddjj_ley_17562_6_9 %}checked{% endif %}"><input type="checkbox" name="DDJJ_Ley_17562_6.9" id="DDJJ_Ley_17562_6.9" {% if data_cliente.ddjj_ley_17562_6_9 %}checked{% endif %}>DDJJ Ley 17562 — 6.9</label>
+                    <label class="checkbox-item {% if data_cliente.f_3283_autorizacion_arca %}checked{% endif %}"><input type="checkbox" name="F_3283_Autorización_ARCA" id="F_3283_Autorización_ARCA" {% if data_cliente.f_3283_autorizacion_arca %}checked{% endif %}>F 3283 Autorización ARCA</label>
+                    <label class="checkbox-item {% if data_cliente.formulario_carta_poder_css %}checked{% endif %}"><input type="checkbox" name="Formulario_Carta_Poder_(CSS)" id="Formulario_Carta_Poder_(CSS)" {% if data_cliente.formulario_carta_poder_css %}checked{% endif %}>Formulario Carta Poder (CSS)</label>
+                    <label class="checkbox-item {% if data_cliente.formulario_encuesta_rti %}checked{% endif %}"><input type="checkbox" name="Formulario_encuesta_RTI" id="Formulario_encuesta_RTI" {% if data_cliente.formulario_encuesta_rti %}checked{% endif %}>Formulario Encuesta RTI</label>
+                    <label class="checkbox-item {% if data_cliente.renuncia_condicionada %}checked{% endif %}"><input type="checkbox" name="Renuncia_condicionada" id="Renuncia_condicionada" {% if data_cliente.renuncia_condicionada %}checked{% endif %}>Renuncia Condicionada</label>
+                    <label class="checkbox-item {% if data_cliente.telegrama_revocando_poder %}checked{% endif %}"><input type="checkbox" name="Telegrama_revocando_poder" id="Telegrama_revocando_poder" {% if data_cliente.telegrama_revocando_poder %}checked{% endif %}>Telegrama Revocando Poder</label>
+                    <label class="checkbox-item {% if data_cliente.poder_ar_la_plata %}checked{% endif %}"><input type="checkbox" name="poder_AR_La_plata" id="poder_AR_La_plata" {% if data_cliente.poder_ar_la_plata %}checked{% endif %}>Poder AR La Plata</label>
+                    <label class="checkbox-item {% if data_cliente.poder_ar_punta_alta %}checked{% endif %}"><input type="checkbox" name="poder_AR_punta_alta" id="poder_AR_punta_alta" {% if data_cliente.poder_ar_punta_alta %}checked{% endif %}>Poder AR Punta Alta</label>
+                    <label class="checkbox-item {% if data_cliente.ps_5_8_obra_social %}checked{% endif %}"><input type="checkbox" name="PS_5.8_Obra_Social" id="PS_5.8_Obra_Social" {% if data_cliente.ps_5_8_obra_social %}checked{% endif %}>PS 5.8 Obra Social</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_304_carta_poder %}checked{% endif %}"><input type="checkbox" name="PS_6.304_Carta_Poder" id="PS_6.304_Carta_Poder" {% if data_cliente.ps_6_304_carta_poder %}checked{% endif %}>PS 6.304 Carta Poder</label>
+                </div>
+
+                <div class="section-label">Formularios PS</div>
+                <div class="checkbox-grid">
+                    <label class="checkbox-item {% if data_cliente.ps_1_75_carta_poder_cap_iii_27705 %}checked{% endif %}"><input type="checkbox" name="PS_1.75_Carta_Poder_Cap_III_27.705" id="PS_1.75_Carta_Poder_Cap_III_27.705" {% if data_cliente.ps_1_75_carta_poder_cap_iii_27705 %}checked{% endif %}>PS 1.75 Carta Poder Cap III 27.705</label>
+                    <label class="checkbox-item {% if data_cliente.ps_5_7_derivacion_aportes_obra_social %}checked{% endif %}"><input type="checkbox" name="PS_5.7_Derivacion_aportes_Obra_Social" id="PS_5.7_Derivacion_aportes_Obra_Social" {% if data_cliente.ps_5_7_derivacion_aportes_obra_social %}checked{% endif %}>PS 5.7 Derivación Aportes Obra Social</label>
+                    <label class="checkbox-item {% if data_cliente.ps_5_11_aceptacion_de_la_obra_social %}checked{% endif %}"><input type="checkbox" name="PS_5.11_Aceptacion_de_la_Obra_Social" id="PS_5.11_Aceptacion_de_la_Obra_Social" {% if data_cliente.ps_5_11_aceptacion_de_la_obra_social %}checked{% endif %}>PS 5.11 Aceptación de la Obra Social</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_2_certific_de_servicios %}checked{% endif %}"><input type="checkbox" name="PS_6.2_Certific_de_Servicios" id="PS_6.2_Certific_de_Servicios" {% if data_cliente.ps_6_2_certific_de_servicios %}checked{% endif %}>PS 6.2 Certif. de Servicios</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_3_nivel_de_estudios_rti %}checked{% endif %}"><input type="checkbox" name="PS_6.3_Nivel_de_estudios_RTI" id="PS_6.3_Nivel_de_estudios_RTI" {% if data_cliente.ps_6_3_nivel_de_estudios_rti %}checked{% endif %}>PS 6.3 Nivel de Estudios RTI</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_4_carta_poder %}checked{% endif %}"><input type="checkbox" name="PS_6.4_Carta_Poder" id="PS_6.4_Carta_Poder" {% if data_cliente.ps_6_4_carta_poder %}checked{% endif %}>PS 6.4 Carta Poder</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_8_ddjj_testimonial_acred_servicios %}checked{% endif %}"><input type="checkbox" name="PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS" id="PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS" {% if data_cliente.ps_6_8_ddjj_testimonial_acred_servicios %}checked{% endif %}>PS 6.8 DDJJ Testimonial Acred. Servicios</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_13_ddjj_testimonial_dependencia_economica %}checked{% endif %}"><input type="checkbox" name="PS_6.13_DDJJ_Testimonial_dependencia_economica" id="PS_6.13_DDJJ_Testimonial_dependencia_economica" {% if data_cliente.ps_6_13_ddjj_testimonial_dependencia_economica %}checked{% endif %}>PS 6.13 DDJJ Testimonial Dependencia Económica</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_268_certific_de_servicios_ampliatoria %}checked{% endif %}"><input type="checkbox" name="PS_6.268_Certific_de_Servicios_(Ampliatoria)" id="PS_6.268_Certific_de_Servicios_(Ampliatoria)" {% if data_cliente.ps_6_268_certific_de_servicios_ampliatoria %}checked{% endif %}>PS 6.268 Certif. de Servicios (Ampliatoria)</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_273_certific_complementaria_investigadores %}checked{% endif %}"><input type="checkbox" name="PS_6.273_Certific_complementaria_investigadores" id="PS_6.273_Certific_complementaria_investigadores" {% if data_cliente.ps_6_273_certific_complementaria_investigadores %}checked{% endif %}>PS 6.273 Certif. Complementaria Investigadores</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_278_dto_de_cuotas_jubilacion %}checked{% endif %}"><input type="checkbox" name="PS_6.278_Dto_de_cuotas_jubilación" id="PS_6.278_Dto_de_cuotas_jubilación" {% if data_cliente.ps_6_278_dto_de_cuotas_jubilacion %}checked{% endif %}>PS 6.278 Dto. de Cuotas Jubilación</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_279_dto_de_cuotas_pension %}checked{% endif %}"><input type="checkbox" name="PS_6.279_Dto_de_cuotas_pensión" id="PS_6.279_Dto_de_cuotas_pensión" {% if data_cliente.ps_6_279_dto_de_cuotas_pension %}checked{% endif %}>PS 6.279 Dto. de Cuotas Pensión</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_284_ddjj_fzas_armadas %}checked{% endif %}"><input type="checkbox" name="PS_6.284_DDJJ_Fzas_Armadas" id="PS_6.284_DDJJ_Fzas_Armadas" {% if data_cliente.ps_6_284_ddjj_fzas_armadas %}checked{% endif %}>PS 6.284 DDJJ Fuerzas Armadas</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_292_ddjj_solicitante_sdm %}checked{% endif %}"><input type="checkbox" name="PS_6.292_DDJJ_solicitante_SDM" id="PS_6.292_DDJJ_solicitante_SDM" {% if data_cliente.ps_6_292_ddjj_solicitante_sdm %}checked{% endif %}>PS 6.292 DDJJ Solicitante SDM</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_293_ddjj_dador_de_trabajo_sdm %}checked{% endif %}"><input type="checkbox" name="PS_6.293_DDJJ_Dador_de_trabajo_SDM" id="PS_6.293_DDJJ_Dador_de_trabajo_SDM" {% if data_cliente.ps_6_293_ddjj_dador_de_trabajo_sdm %}checked{% endif %}>PS 6.293 DDJJ Dador de Trabajo SDM</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_294_ddjj_renuncia_sdm %}checked{% endif %}"><input type="checkbox" name="PS_6.294_DDJJ_renuncia_SDM" id="PS_6.294_DDJJ_renuncia_SDM" {% if data_cliente.ps_6_294_ddjj_renuncia_sdm %}checked{% endif %}>PS 6.294 DDJJ Renuncia SDM</label>
+                    <label class="checkbox-item {% if data_cliente.ps_6_305_carta_poder %}checked{% endif %}"><input type="checkbox" name="PS_6.305_Carta_Poder" id="PS_6.305_Carta_Poder" {% if data_cliente.ps_6_305_carta_poder %}checked{% endif %}>PS 6.305 Carta Poder</label>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button type="submit" name="accion" value="guardar_cambios" class="btn btn-outline"><i class="fas fa-save"></i> Guardar Cambios</button>
+            <button type="submit" name="accion" value="hacer_formulario" class="btn btn-green" id="btnGenerar"><i class="fas fa-file-zipper"></i> Guardar y Generar Formularios</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    document.querySelectorAll('.checkbox-item input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            this.closest('.checkbox-item').classList.toggle('checked', this.checked);
+        });
+    });
+
+    document.getElementById('btnGenerar').addEventListener('click', function() {
+        const lov = document.getElementById('lov');
+        lov.classList.add('show');
+        const failsafe = setTimeout(() => { lov.classList.remove('show'); clearInterval(poll); }, 30000);
+        const poll = setInterval(function() {
+            if (document.cookie.split(';').some(c => c.trim().startsWith('fileDownloadReady='))) {
+                document.cookie = 'fileDownloadReady=; max-age=0; path=/';
+                lov.classList.remove('show');
+                clearInterval(poll);
+                clearTimeout(failsafe);
+            }
+        }, 500);
+    });
+
+    const SYNC = {
+        'formularios_Reconocimiento_de_Servicios': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Renuncia_condicionada', 'PS_6.2_Certific_de_Servicios', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS'],
+        'formularios_Jubilación': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'PS_6.2_Certific_de_Servicios', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social'],
+        'formularios_Jubilación_con_24.476': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'PS_6.2_Certific_de_Servicios', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_II_Socioeconómico_24.476', 'PS_6.278_Dto_de_cuotas_jubilación'],
+        'formularios_Jubilación_con_27.705': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'PS_6.2_Certific_de_Servicios', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'PS_6.278_Dto_de_cuotas_jubilación', 'PS_6.305_Carta_Poder'],
+        'formularios_Jubilación_docente': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'PS_6.2_Certific_de_Servicios', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Renuncia_condicionada', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)'],
+        'formularios_Jubilación_serv_diferenciales': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'PS_6.2_Certific_de_Servicios', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social'],
+        'formularios_Jubilación_Servicio_Doméstico': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.278_Dto_de_cuotas_jubilación', 'PS_6.292_DDJJ_solicitante_SDM', 'PS_6.293_DDJJ_Dador_de_trabajo_SDM', 'PS_6.294_DDJJ_renuncia_SDM'],
+        'formularios_Jubilación_HIV': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.278_Dto_de_cuotas_jubilación', 'PS_6.292_DDJJ_solicitante_SDM', 'PS_6.293_DDJJ_Dador_de_trabajo_SDM', 'PS_6.294_DDJJ_renuncia_SDM', 'PS_6.2_Certific_de_Servicios', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625'],
+        'formularios_Jubilación_trabajadores_minusvalidos_ceguera': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '6.18_Solicitud_Prestaciones_Previsionales', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.2_Certific_de_Servicios', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', 'Carta_Poder_SRT', 'PS_6.3_Nivel_de_estudios_RTI', 'Formulario_encuesta_RTI', 'DDJJ_de_salud_resol_300', 'PS_6.273_Certific_complementaria_investigadores'],
+        'formularios_Pension_Directa_casados': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.2_Certific_de_Servicios', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', '6.18_Solicitud_Prestaciones_Previsionales_pension', 'PS_6.279_Dto_de_cuotas_pensión', 'DDJJ_Ley_17562_6.9'],
+        'formularios_Pension_Directa_convivientes': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.2_Certific_de_Servicios', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', '6.18_Solicitud_Prestaciones_Previsionales_pension', 'PS_6.279_Dto_de_cuotas_pensión', 'PS_6.13_DDJJ_Testimonial_dependencia_economica'],
+        'formularios_Pension_Deriva_casados': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', '6.18_Solicitud_Prestaciones_Previsionales_pension', 'PS_6.278_Dto_de_cuotas_jubilación', 'DDJJ_Ley_17562_6.9'],
+        'formularios_Pension_Deriva_convivientes': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', '6.18_Solicitud_Prestaciones_Previsionales_pension', 'PS_6.278_Dto_de_cuotas_jubilación', 'PS_6.13_DDJJ_Testimonial_dependencia_economica'],
+        'formularios_Pension_Directa_Derivada_hijo_discapacitada': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', '6.18_Solicitud_Prestaciones_Previsionales_pension', 'PS_6.13_DDJJ_Testimonial_dependencia_economica', 'Carta_Poder_SRT', 'Formulario_encuesta_RTI', 'PS_6.2_Certific_de_Servicios', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS'],
+        'formularios_Retiro_Transitorio_por_invalidez': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', 'Carta_Poder_SRT', 'Formulario_encuesta_RTI', 'PS_6.2_Certific_de_Servicios', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'F_3283_Autorización_ARCA', '6.18_Solicitud_Prestaciones_Previsionales', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.3_Nivel_de_estudios_RTI', 'DDJJ_de_salud_resol_300', 'PS_6.268_Certific_de_Servicios_(Ampliatoria)', 'PS_6.273_Certific_complementaria_investigadores'],
+        'formularios_Retiro_Transitorio_por_invalidez_SDM': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Anexo_I_Ley_27.625', 'Carta_Poder_SRT', 'Formulario_encuesta_RTI', 'PS_6.2_Certific_de_Servicios', 'PS_6.8_DDJJ_TESTIMONIAL_ACRED_SERVICIOS', 'F_3283_Autorización_ARCA', '6.18_Solicitud_Prestaciones_Previsionales', 'Anexo_II_980_05', 'Anexo_II_Socioeconómico_24.476', 'PS_6.3_Nivel_de_estudios_RTI', 'DDJJ_de_salud_resol_300', 'PS_6.273_Certific_complementaria_investigadores', 'PS_6.278_Dto_de_cuotas_jubilación', 'PS_6.292_DDJJ_solicitante_SDM', 'PS_6.293_DDJJ_Dador_de_trabajo_SDM', 'PS_6.294_DDJJ_renuncia_SDM'],
+        'formularios_PUAM': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder', '2.91_Guarda_Documental', 'PS_6.284_DDJJ_Fzas_Armadas', 'Anexo_II_DEC_894_01', 'F_3283_Autorización_ARCA', '6.18_Solicitud_Prestaciones_Previsionales'],
+        'formularios_UCAP': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', '2.91_Guarda_Documental', 'PS_1.75_Carta_Poder_Cap_III_27.705', 'PS_6.305_Carta_Poder', 'DDJJ_de_salud_resol_300', 'PS_6.2_Certific_de_Servicios'],
+        'formularios_Reajuste_de_Haberes': ['Formulario_Carta_Poder_(CSS)', 'F_3283_Autorización_ARCA', '2.91_Guarda_Documental', 'PS_6.2_Certific_de_Servicios', 'PS_6.4_Carta_Poder', 'PS_5.11_Aceptacion_de_la_Obra_Social', 'PS_5.7_Derivacion_aportes_Obra_Social', 'Telegrama_revocando_poder'],
+        'formularios_asignacion_fliar_hijo_discapacitado': ['Formulario_Carta_Poder_(CSS)', 'PS_6.4_Carta_Poder'],
+        'formularios_Jubilacion_nueva': ['6.18_Solicitud_Prestaciones_Previsionales', 'poder_AR_La_plata', 'poder_AR_punta_alta', 'PS_6.4_Carta_Poder', 'PS_6.284_DDJJ_Fzas_Armadas', 'PS_5.8_Obra_Social', '2.91_Guarda_Documental'],
+        'formularios_Jubilacion_PC_nueva': ['6.18_Solicitud_Prestaciones_Previsionales', 'poder_AR_La_plata', 'poder_AR_punta_alta', 'PS_6.4_Carta_Poder', 'PS_6.284_DDJJ_Fzas_Armadas', 'PS_5.8_Obra_Social', 'Anexo_II_DEC_894_01', '2.91_Guarda_Documental'],
+        'formularios_Jubilacion_Moratoria_nueva': ['6.18_Solicitud_Prestaciones_Previsionales', 'poder_AR_La_plata', 'poder_AR_punta_alta', 'PS_6.4_Carta_Poder', 'PS_6.284_DDJJ_Fzas_Armadas', 'PS_5.8_Obra_Social', '2.91_Guarda_Documental', 'PS_6.305_Carta_Poder', 'PS_6.304_Carta_Poder', 'PS_6.278_Dto_de_cuotas_jubilación'],
+        'formularios_Pension_nueva': ['6.18_Solicitud_Prestaciones_Previsionales', 'poder_AR_La_plata', 'poder_AR_punta_alta', 'PS_6.4_Carta_Poder', 'PS_6.284_DDJJ_Fzas_Armadas', 'PS_5.8_Obra_Social', '2.91_Guarda_Documental'],
+    };
+
+    Object.entries(SYNC).forEach(([triggerId, deps]) => {
+        const trigger = document.getElementById(triggerId);
+        if (!trigger) return;
+        trigger.addEventListener('change', function() {
+            deps.forEach(id => {
+                const cb = document.getElementById(id);
+                if (cb) { cb.checked = this.checked; cb.closest('.checkbox-item').classList.toggle('checked', this.checked); }
+            });
+        });
+    });
+</script>
+{% endblock %}

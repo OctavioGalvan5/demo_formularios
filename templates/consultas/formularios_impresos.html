@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 30px; }
+        h2 { color: #1e3a8a; font-size: 13pt; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; font-size: 10.5pt; }
+        .num { width: 36px; color: #6b7280; font-size: 9pt; }
+        .check { width: 20px; }
+    </style>
+</head>
+<body>
+    <h2>LegalForms — Formularios a imprimir</h2>
+    <table>
+        {% for fila in filas %}
+        <tr>
+            <td class="num">{{ loop.index }}</td>
+            <td class="check">☐</td>
+            <td>{{ fila }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

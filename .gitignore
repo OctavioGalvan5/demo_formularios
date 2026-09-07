@@ -1,0 +1,36 @@
+# Secretos
+.env
+
+# Proyecto original (fuera del repo)
+estudio_rodera/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+.Python
+
+# SQLite local (por si alguien corre en modo local sin Postgres)
+*.db
+
+# Entornos IDE
+.vscode/
+.idea/
+
+# Archivos temporales
+*.log
+*.tmp
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# main.py vacío del scaffold inicial
+main.py

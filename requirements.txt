@@ -1,0 +1,12 @@
+Flask
+flask-login
+SQLAlchemy
+werkzeug
+pypdf
+PyMuPDF
+docxtpl
+xhtml2pdf
+openai
+python-dotenv
+psycopg2-binary
+gunicorn

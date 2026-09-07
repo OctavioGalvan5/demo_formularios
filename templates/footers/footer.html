@@ -1,0 +1,19 @@
+<footer style="
+    background: linear-gradient(90deg, #1a5199 0%, #2176c7 100%);
+    border-top: 2px solid rgba(255,255,255,0.12);
+    padding: 22px 36px;
+">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <i class="fas fa-file-signature" style="color:rgba(255,255,255,0.65);font-size:.95rem;"></i>
+            <div>
+                <div style="font-family:'Playfair Display',serif;font-size:.92rem;font-weight:600;color:white;letter-spacing:.03em;">LegalForms</div>
+                <div style="font-size:.64rem;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.1em;font-family:'Lato',sans-serif;">Formularios legales con IA</div>
+            </div>
+        </div>
+        <div style="font-size:.7rem;color:rgba(255,255,255,0.32);font-family:'Lato',sans-serif;">
+            © <span id="footer-yr"></span> LegalForms · Demo funcional
+        </div>
+    </div>
+</footer>
+<script>document.getElementById('footer-yr').textContent = new Date().getFullYear();</script>

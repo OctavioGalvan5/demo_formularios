@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Clientes — LegalForms{% endblock %}
+
+{% block extra_style %}
+.top-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.search-box { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid var(--border2); border-radius: 7px; padding: 8px 14px; width: 100%; max-width: 340px; }
+.search-box i { color: var(--texto3); }
+.search-box input { border: none; outline: none; font-family: inherit; font-size: .9rem; color: var(--texto); width: 100%; background: transparent; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.card-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #fafcff; border-radius: var(--radius) var(--radius) 0 0; }
+.card-header strong { font-size: .88rem; color: var(--texto); font-weight: 600; }
+.card-header .count { font-size: .78rem; color: var(--azul); margin-left: auto; background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+.card-table { padding: 0; overflow: hidden; }
+@media(max-width:700px) { .top-bar { flex-direction: column; align-items: stretch; } .search-box { max-width: 100%; } }
+{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left">
+        <h1 class="page-title"><i class="fas fa-users" style="font-size:1.1rem;margin-right:8px;opacity:.7;"></i>Clientes</h1>
+        <span class="page-subtitle">Gestión de personas y trámites</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="top-bar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar por nombre, apellido o DNI...">
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" onclick="document.getElementById('modalUpload').classList.add('show')">
+                <i class="fas fa-id-card"></i> Cargar por DNI
+            </button>
+            <form method="POST" action="{{ url_for('agregar_cliente') }}" style="margin:0;">
+                <button type="submit" class="btn btn-outline">
+                    <i class="fas fa-plus"></i> Crear vacío
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card card-table">
+        <div class="card-header">
+            <i class="fas fa-users" style="color:var(--azul);"></i>
+            <strong>Listado de clientes</strong>
+            <span class="count" id="countLabel">{{ data_clientes|length }} registro{{ 's' if data_clientes|length != 1 else '' }}</span>
+        </div>
+
+        {% if data_clientes %}
+        <table class="data-table" id="clientesTable">
+            <thead>
+                <tr>
+                    <th>Apellido y Nombre</th>
+                    <th>DNI</th>
+                    <th>CUIL</th>
+                    <th>Nacionalidad</th>
+                    <th>Nacimiento</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in data_clientes %}
+                <tr data-search="{{ (c.apellido or '') }} {{ (c.nombre or '') }} {{ (c.numero_dni or '') }}">
+                    <td class="nombre">{{ c.apellido or '—' }}, {{ c.nombre or '—' }}</td>
+                    <td>{{ c.numero_dni or '—' }}</td>
+                    <td>{{ c.numero_cuil or '—' }}</td>
+                    <td>{% if c.nacionalidad %}<span class="badge">{{ c.nacionalidad }}</span>{% else %}—{% endif %}</td>
+                    <td>{{ c.fecha_de_nacimiento | fecha }}</td>
+                    <td style="display:flex;gap:8px;justify-content:flex-end;padding:10px 20px;">
+                        <a href="{{ url_for('ver_cliente', id=c.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-eye"></i> Ver
+                        </a>
+                        <form method="POST" action="{{ url_for('eliminar_cliente', id=c.id) }}" onsubmit="return confirm('¿Eliminar este cliente?');" style="margin:0;">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            <i class="fas fa-users"></i>
+            No hay clientes registrados todavía.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal carga DNI -->
+<div class="modal-overlay" id="modalUpload">
+    <div class="modal">
+        <h3><i class="fas fa-id-card" style="color:var(--azul);margin-right:8px;"></i>Cargar DNI</h3>
+        <p>Subí una foto o PDF del DNI (frente y/o dorso) y la IA extraerá los datos automáticamente.</p>
+        <form method="POST" action="{{ url_for('upload_dni') }}" enctype="multipart/form-data" id="uploadForm">
+            <div class="drop-zone" id="dropZone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Arrastrá archivos aquí o hacé clic para seleccionar</p>
+                <small>JPG, PNG o PDF — frente y dorso</small>
+                <input type="file" name="documentos" id="fileInput" multiple accept=".jpg,.jpeg,.png,.pdf">
+            </div>
+            <div class="file-list" id="fileList"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-gray" onclick="document.getElementById('modalUpload').classList.remove('show')">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="btnUpload" disabled>
+                    <i class="fas fa-magic"></i> Extraer datos
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        let visible = 0;
+        document.querySelectorAll('#clientesTable tbody tr').forEach(row => {
+            const show = row.dataset.search.toLowerCase().includes(q);
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        document.getElementById('countLabel').textContent = visible + ' registro' + (visible !== 1 ? 's' : '');
+    });
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList  = document.getElementById('fileList');
+    const btnUpload = document.getElementById('btnUpload');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault(); dropZone.classList.remove('drag');
+        fileInput.files = e.dataTransfer.files; updateFileList();
+    });
+    fileInput.addEventListener('change', updateFileList);
+
+    function updateFileList() {
+        fileList.innerHTML = '';
+        btnUpload.disabled = fileInput.files.length === 0;
+        Array.from(fileInput.files).forEach(f => {
+            const ext  = f.name.split('.').pop().toLowerCase();
+            const icon = ext === 'pdf' ? 'fa-file-pdf' : 'fa-file-image';
+            fileList.innerHTML += `<div class="file-item"><i class="fas ${icon}"></i>${f.name}</div>`;
+        });
+    }
+</script>
+{% endblock %}
