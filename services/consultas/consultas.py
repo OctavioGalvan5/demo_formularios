@@ -163,9 +163,11 @@ def openai_api_extract_data(image_streams):
             })
 
         system_message = """Eres un asistente de transcripción de datos para un estudio jurídico en Argentina.
-Tu función es actuar como un sistema OCR de alta precisión: leer documentos de identidad argentinos (DNI)
-que los propios clientes del estudio proporcionan voluntariamente como parte de sus trámites legales.
-Solo devuelve el objeto JSON solicitado, sin texto adicional, sin explicaciones, sin markdown."""
+Actuás como un sistema OCR de alta precisión para leer DNIs argentinos que los propios clientes del
+estudio entregan voluntariamente como parte del alta administrativa de sus trámites legales. La transcripción
+es lícita, autorizada por el titular del documento, y necesaria para completar sus formularios previsionales.
+Devolvé ÚNICAMENTE un objeto JSON válido con la estructura pedida. No agregues prosa, explicaciones,
+markdown, ni encabezados. Si un campo no está visible en la imagen, devolvé una cadena vacía "" para ese campo."""
 
         prompt = """Transcribí los datos visibles de este documento de identidad argentino (DNI) al siguiente formato JSON.
 Devolvé ÚNICAMENTE el objeto JSON con esta estructura exacta:
@@ -195,35 +197,55 @@ Devolvé ÚNICAMENTE el objeto JSON con esta estructura exacta:
             {"role": "user", "content": [{"type": "text", "text": prompt}, *image_contents]}
         ]
 
-        response = client.chat.completions.create(model="gpt-4o", messages=messages, max_tokens=2000)
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            max_tokens=2000,
+            temperature=0,
+            response_format={"type": "json_object"},
+        )
 
         if not response or not response.choices:
             return None, "Respuesta vacía de la API"
 
-        return procesar_datos_extraidos(response.choices[0].message.content), None
+        contenido = response.choices[0].message.content or ""
+        datos = procesar_datos_extraidos(contenido)
+        if datos is None:
+            preview = contenido[:250] + ("…" if len(contenido) > 250 else "")
+            return None, f"La IA no devolvió un JSON válido. Respuesta: {preview or '(vacía)'}"
+        return datos, None
 
     except Exception as e:
         return None, str(e)
 
 
 def procesar_datos_extraidos(json_texto):
+    if not json_texto:
+        return None
+    txt = json_texto.strip()
+    if txt.startswith("```"):
+        partes = txt.split("```")
+        if len(partes) >= 2:
+            body = partes[1]
+            if body.lower().startswith("json"):
+                body = body[4:]
+            txt = body.strip()
     try:
-        json_texto = json_texto.strip().strip("```json").strip("```")
-        datos = json.loads(json_texto)
-
-        claves = ["dni_number", "cuil_number", "phone_number", "name", "surname",
-                  "full_name", "full_name_2", "sexo", "sexo_femenino", "sexo_masculino",
-                  "date_of_birth", "entry_date", "nationality", "address",
-                  "adress_number", "province", "department", "city"]
-        for clave in claves:
-            datos.setdefault(clave, "")
-
-        if datos["dni_number"]:
-            datos["cuil_number"] = calcular_cuil(datos.get("sexo", ""), datos["dni_number"])
-
-        return datos
+        datos = json.loads(txt)
     except json.JSONDecodeError:
         return None
+
+    claves = ["dni_number", "cuil_number", "phone_number", "name", "surname",
+              "full_name", "full_name_2", "sexo", "sexo_femenino", "sexo_masculino",
+              "date_of_birth", "entry_date", "nationality", "address",
+              "adress_number", "province", "department", "city"]
+    for clave in claves:
+        datos.setdefault(clave, "")
+
+    if datos["dni_number"]:
+        datos["cuil_number"] = calcular_cuil(datos.get("sexo", ""), datos["dni_number"])
+
+    return datos
 
 
 def update_cliente_in_db(data):
