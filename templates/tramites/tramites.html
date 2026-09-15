@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Tipos de trámite — LegalForms{% endblock %}
+
+{% block extra_style %}
+.grid-2 { display: grid; grid-template-columns: 1fr 1.4fr; gap: 22px; align-items: start; }
+@media(max-width:900px) { .grid-2 { grid-template-columns: 1fr; } }
+.card-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #fafcff; border-radius: var(--radius) var(--radius) 0 0; }
+.card-header strong { font-size: .88rem; color: var(--texto); font-weight: 600; }
+.card-header .count { font-size: .78rem; color: var(--azul); margin-left: auto; background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+.card-table { padding: 0; overflow: hidden; }
+{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left">
+        <h1 class="page-title"><i class="fas fa-folder-tree" style="font-size:1.1rem;margin-right:8px;opacity:.7;"></i>Tipos de trámite</h1>
+        <span class="page-subtitle">Lista controlada para clasificar los formularios del catálogo</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="info-box">
+        Cada formulario del catálogo se clasifica con un tipo de trámite (por ejemplo <strong>Jubilación</strong> o <strong>Pensión</strong>). Se elige de esta lista al subir o mapear un formulario — así todos usan siempre el mismo nombre, sin variantes por tipeo.
+    </div>
+
+    <div class="grid-2">
+
+        <div class="card">
+            <h3 class="card-title"><span class="card-title-bar"></span> Nuevo tipo de trámite</h3>
+            <form method="POST" action="{{ url_for('tramites_crear') }}">
+                <div class="fg" style="margin-bottom:14px;">
+                    <label>Nombre</label>
+                    <input type="text" name="nombre" placeholder="Ej: Jubilación" autocomplete="off" required>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-plus"></i> Crear tipo de trámite
+                </button>
+            </form>
+        </div>
+
+        <div class="card card-table">
+            <div class="card-header">
+                <i class="fas fa-folder-tree" style="color:var(--azul);"></i>
+                <strong>Tipos de trámite</strong>
+                <span class="count">{{ tramites|length }} tipo{{ 's' if tramites|length != 1 else '' }}</span>
+            </div>
+
+            {% if tramites %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in tramites %}
+                    <tr>
+                        <td class="nombre">{{ t.nombre }}</td>
+                        <td style="text-align:right;">
+                            <form method="POST" action="{{ url_for('tramites_eliminar', id=t.id) }}" style="margin:0;display:inline;"
+                                  onsubmit="return confirm('¿Eliminar el tipo de trámite &quot;{{ t.nombre|e }}&quot;? Los formularios que ya lo usaban conservan el nombre, pero no vas a poder volver a elegirlo de la lista.');">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">
+                <i class="fas fa-folder-tree"></i>
+                Todavía no creaste ningún tipo de trámite.
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

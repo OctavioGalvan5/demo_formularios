@@ -24,9 +24,13 @@ def init_db():
     if _use_postgres:
         _id   = "id BIGSERIAL PRIMARY KEY"
         _bool = "BOOLEAN DEFAULT FALSE"
+        _ts   = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        _fk   = "BIGINT"
     else:
         _id   = "id INTEGER PRIMARY KEY AUTOINCREMENT"
         _bool = "BOOLEAN DEFAULT 0"
+        _ts   = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        _fk   = "INTEGER"
 
     with engine.begin() as conn:
         conn.execute(text(f"""
@@ -60,80 +64,77 @@ def init_db():
                 provincia TEXT,
                 departamento TEXT,
                 ciudad TEXT,
-                created_by TEXT,
-                formularios_reconocimiento_servicios {_bool},
-                formularios_jubilacion {_bool},
-                formularios_jubilacion_con_24_476 {_bool},
-                formularios_jubilacion_con_27_705 {_bool},
-                formularios_jubilacion_docente {_bool},
-                formularios_jubilacion_serv_diferenciales {_bool},
-                formularios_jubilacion_servicio_domestico {_bool},
-                formularios_jubilacion_hiv {_bool},
-                formularios_jubilacion_minusvalidos_ceguera {_bool},
-                formularios_pension_directa_casados {_bool},
-                formularios_pension_directa_convivientes {_bool},
-                formularios_pension_derivada_casados {_bool},
-                formularios_pension_derivada_convivientes {_bool},
-                formularios_pension_directa_derivada_hijo_discapacitada {_bool},
-                formularios_retiro_transitorio_por_invalidez {_bool},
-                formularios_retiro_transitorio_por_invalidez_sdm {_bool},
-                formularios_puam {_bool},
-                formularios_ucap {_bool},
-                formularios_reajuste_de_haberes {_bool},
-                formularios_asignacion_fliar_hijo_discapacitado {_bool},
-                beneficios_nuevo_convenio_de_honorarios_numerado {_bool},
-                juicios_nuevo_convenio_de_honorarios_numerado {_bool},
-                convenio_magistrados {_bool},
-                convenio_de_gastos_administrativos_judiciales {_bool},
-                _2_91_guarda_documental {_bool},
-                _6_18_solicitud_prestaciones_previsionales {_bool},
-                _6_18_solicitud_prestaciones_previsionales_pension {_bool},
-                acta_poder {_bool},
-                anexo_baja_puam {_bool},
-                anexo_i_ley_27625 {_bool},
-                anexo_ii_dec_894_01 {_bool},
-                anexo_ii_980_05 {_bool},
-                anexo_ii_socioeconomico_24_476 {_bool},
-                baja_pnc {_bool},
-                carta_poder_srt {_bool},
-                ddjj_de_salud_resol_300 {_bool},
-                ddjj_ley_17562_6_9 {_bool},
-                f_3283_autorizacion_arca {_bool},
-                formulario_carta_poder_css {_bool},
-                formulario_encuesta_rti {_bool},
-                ps_1_75_carta_poder_cap_iii_27705 {_bool},
-                ps_5_7_derivacion_aportes_obra_social {_bool},
-                ps_5_11_aceptacion_de_la_obra_social {_bool},
-                ps_6_292_ddjj_solicitante_sdm {_bool},
-                ps_6_293_ddjj_dador_de_trabajo_sdm {_bool},
-                ps_6_294_ddjj_renuncia_sdm {_bool},
-                ps_6_2_certific_de_servicios {_bool},
-                ps_6_3_nivel_de_estudios_rti {_bool},
-                ps_6_4_carta_poder {_bool},
-                ps_6_8_ddjj_testimonial_acred_servicios {_bool},
-                ps_6_13_ddjj_testimonial_dependencia_economica {_bool},
-                ps_6_268_certific_de_servicios_ampliatoria {_bool},
-                ps_6_273_certific_complementaria_investigadores {_bool},
-                ps_6_278_dto_de_cuotas_jubilacion {_bool},
-                ps_6_279_dto_de_cuotas_pension {_bool},
-                ps_6_284_ddjj_fzas_armadas {_bool},
-                ps_6_305_carta_poder {_bool},
-                renuncia_condicionada {_bool},
-                telegrama_revocando_poder {_bool},
-                poder_ar_la_plata {_bool},
-                poder_ar_punta_alta {_bool},
-                formularios_jubilacion_nueva {_bool},
-                formularios_jubilacion_pc_nueva {_bool},
-                formularios_jubilacion_moratoria_nueva {_bool},
-                formularios_pension_nueva {_bool},
-                ps_5_8_obra_social {_bool},
-                ps_6_304_carta_poder {_bool}
+                created_by TEXT
             )
         """))
 
+        # Catálogo de formularios (PDF/DOCX) gestionable por el admin del estudio.
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_formularios (
+                {_id},
+                nombre TEXT NOT NULL,
+                categoria TEXT DEFAULT '',
+                tipo TEXT NOT NULL,
+                archivo TEXT NOT NULL,
+                nombre_original TEXT DEFAULT '',
+                mapeo TEXT DEFAULT '{{}}',
+                activo {_bool.replace('FALSE', 'TRUE').replace('0', '1')},
+                creado_por TEXT,
+                fecha_alta {_ts}
+            )
+        """))
+
+        # Selección de formularios por cliente (reemplaza las columnas booleanas fijas).
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_cliente_formularios (
+                {_id},
+                cliente_id {_fk} NOT NULL,
+                formulario_id {_fk} NOT NULL,
+                UNIQUE(cliente_id, formulario_id)
+            )
+        """))
+
+        # Variables personalizadas: el admin puede sumar campos propios al
+        # vocabulario fijo (VARIABLES_SISTEMA) sin tocar código.
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_variables_personalizadas (
+                {_id},
+                clave TEXT NOT NULL UNIQUE,
+                etiqueta TEXT NOT NULL,
+                creado_por TEXT,
+                fecha_alta {_ts}
+            )
+        """))
+
+        # Valor de cada variable personalizada por cliente.
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_cliente_variables (
+                {_id},
+                cliente_id {_fk} NOT NULL,
+                variable_id {_fk} NOT NULL,
+                valor TEXT DEFAULT '',
+                UNIQUE(cliente_id, variable_id)
+            )
+        """))
+
+        # Lista controlada de tipos de trámite (Jubilación, Pensión, etc.)
+        # que el admin gestiona, en vez de escribir la categoría a mano.
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_tipos_tramite (
+                {_id},
+                nombre TEXT NOT NULL UNIQUE,
+                creado_por TEXT,
+                fecha_alta {_ts}
+            )
+        """))
 
 def drop_demo_tables():
     """Utilidad para limpiar las tablas demo cuando termine la demo."""
     with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS demo_cliente_variables"))
+        conn.execute(text("DROP TABLE IF EXISTS demo_variables_personalizadas"))
+        conn.execute(text("DROP TABLE IF EXISTS demo_tipos_tramite"))
+        conn.execute(text("DROP TABLE IF EXISTS demo_cliente_formularios"))
+        conn.execute(text("DROP TABLE IF EXISTS demo_formularios"))
         conn.execute(text("DROP TABLE IF EXISTS demo_clientes"))
         conn.execute(text("DROP TABLE IF EXISTS demo_users"))

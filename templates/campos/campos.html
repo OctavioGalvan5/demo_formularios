@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Campos personalizados — LegalForms{% endblock %}
+
+{% block extra_style %}
+.grid-2 { display: grid; grid-template-columns: 1fr 1.4fr; gap: 22px; align-items: start; }
+@media(max-width:900px) { .grid-2 { grid-template-columns: 1fr; } }
+.card-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #fafcff; border-radius: var(--radius) var(--radius) 0 0; }
+.card-header strong { font-size: .88rem; color: var(--texto); font-weight: 600; }
+.card-header .count { font-size: .78rem; color: var(--azul); margin-left: auto; background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+.card-table { padding: 0; overflow: hidden; }
+{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left">
+        <h1 class="page-title"><i class="fas fa-list-ul" style="font-size:1.1rem;margin-right:8px;opacity:.7;"></i>Campos personalizados</h1>
+        <span class="page-subtitle">Variables propias, además de las estándar del sistema</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="info-box">
+        El sistema ya trae un vocabulario fijo de datos del cliente (nombre, DNI, CUIL, domicilio, etc.) que siempre está disponible. Acá podés agregar los tuyos propios — por ejemplo <strong>Profesión</strong>, <strong>Email</strong> u <strong>Obra Social</strong> — para usarlos igual que los estándar al mapear un formulario. Se completan a mano en la ficha del cliente, en <strong>Datos adicionales</strong>.
+    </div>
+
+    <div class="grid-2">
+
+        <div class="card">
+            <h3 class="card-title"><span class="card-title-bar"></span> Nuevo campo</h3>
+            <form method="POST" action="{{ url_for('campos_crear') }}">
+                <div class="fg" style="margin-bottom:14px;">
+                    <label>Nombre del campo</label>
+                    <input type="text" name="etiqueta" placeholder="Ej: Profesión" autocomplete="off" required>
+                </div>
+                <button type="submit" class="btn-submit">
+                    <i class="fas fa-plus"></i> Crear campo
+                </button>
+            </form>
+        </div>
+
+        <div class="card card-table">
+            <div class="card-header">
+                <i class="fas fa-list-ul" style="color:var(--azul);"></i>
+                <strong>Campos personalizados</strong>
+                <span class="count">{{ campos|length }} campo{{ 's' if campos|length != 1 else '' }}</span>
+            </div>
+
+            {% if campos %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Variable</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in campos %}
+                    <tr>
+                        <td class="nombre">{{ c.etiqueta }}</td>
+                        <td><span class="campo-detectado" style="font-family:monospace;background:#f1f5f9;padding:3px 9px;border-radius:5px;font-size:.82rem;color:var(--texto2);">{{ c.clave }}</span></td>
+                        <td style="text-align:right;">
+                            <form method="POST" action="{{ url_for('campos_eliminar', id=c.id) }}" style="margin:0;display:inline;"
+                                  onsubmit="return confirm('¿Eliminar el campo &quot;{{ c.etiqueta|e }}&quot;? Se borran también los valores cargados para cada cliente.');">
+                                <button type="submit" class="btn btn-danger btn-sm">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">
+                <i class="fas fa-list-ul"></i>
+                Todavía no creaste ningún campo personalizado.
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+{% endblock %}

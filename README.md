@@ -2,6 +2,8 @@
 
 Demo del módulo de generación automática de formularios legales con IA (OCR de DNI vía GPT-4o + relleno de PDFs/DOCX).
 
+El catálogo de formularios es autogestionable: el admin del estudio sube sus propios PDFs/DOCX desde la app (sin tocar código ni base de datos), mapea los campos detectados contra los datos del cliente, y puede darlos de baja o reemplazarlos en cualquier momento. Ver "Gestión de formularios (admin)" más abajo.
+
 ## Stack
 - Flask + flask-login
 - PostgreSQL (mismo servidor que producción, tablas con prefijo `demo_`)
@@ -39,12 +41,23 @@ El archivo `.env` ya está copiado del proyecto original con:
 1. Login con el usuario admin creado.
 2. Menú **Clientes** → **Cargar por DNI** → subir foto/PDF (frente y dorso).
 3. La IA extrae automáticamente nombre, DNI, CUIL, domicilio, etc.
-4. En la ficha del cliente, tab **Opciones de trámite** — marcar el trámite; se auto-seleccionan los documentos.
+4. En la ficha del cliente, tab **Formularios** — marcar los formularios que aplican (catálogo cargado por el admin).
 5. Botón **Guardar y Generar Formularios** → descarga ZIP con PDFs/DOCX rellenados.
+
+## Gestión de formularios (admin)
+
+El menú **Formularios** (solo visible para admins) permite administrar el catálogo sin tocar código:
+
+1. **Subir**: PDF (con campos de formulario/AcroForm) o DOCX (con marcadores `{{variable}}`, vía `docxtpl`).
+2. **Mapear**: el sistema detecta automáticamente los campos del archivo (`pypdf` para PDF, `docxtpl` para DOCX) y el admin elige, por cada campo, a qué dato del cliente corresponde (nombre, DNI, CUIL, domicilio, etc. — vocabulario fijo definido en `services/formularios/formularios.py`).
+3. **Dar de baja / reactivar**: oculta el formulario de la ficha de clientes sin borrar el historial de documentos ya generados con él.
+4. **Eliminar**: borra el registro y el archivo en disco definitivamente.
+
+Requisito: el PDF tiene que ser un formulario interactivo (no un escaneo plano) para poder autocompletarse.
 
 ## Limpieza
 
-Cuando termine la demo, para eliminar las tablas `demo_users` y `demo_clientes` del Postgres:
+Cuando termine la demo, para eliminar todas las tablas `demo_*` del Postgres:
 
 ```bash
 python limpiar_demo.py
@@ -54,15 +67,16 @@ python limpiar_demo.py
 
 ```
 DEMO formularios/
-├── app.py                 # rutas Flask (auth, home, consultas, usuarios)
-├── crear_usuario.py       # bootstrap del admin
-├── limpiar_demo.py        # DROP de las tablas demo
+├── app.py                    # rutas Flask (auth, home, consultas, usuarios, formularios)
+├── crear_usuario.py          # bootstrap del admin
+├── limpiar_demo.py           # DROP de las tablas demo
 ├── requirements.txt
-├── .env                   # credenciales (Postgres + OpenAI)
-├── models/database.py     # engine SQLAlchemy + init_db (demo_users, demo_clientes)
-├── services/consultas/    # OCR GPT-4o + mapping formularios
-├── templates/             # base, nav, footer, home, auth, consultas, usuarios
-├── datos/formularios/     # 40 PDFs + 5 DOCX plantilla (fillables)
+├── .env                      # credenciales (Postgres + OpenAI)
+├── models/database.py        # engine SQLAlchemy + init_db (demo_users, demo_clientes, demo_formularios, demo_cliente_formularios)
+├── services/consultas/       # OCR GPT-4o del DNI
+├── services/formularios/     # catálogo de formularios: detección de campos, mapeo, generación
+├── templates/                # base, nav, footer, home, auth, consultas, usuarios, formularios
+├── datos/formularios/        # PDFs/DOCX subidos por el admin (no versionados salvo los de ejemplo)
 └── static/uploads/
 ```
 

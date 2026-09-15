@@ -22,7 +22,7 @@
             ('consultas', 'fa-users',  'Clientes'),
         ] %}
         {% if is_admin %}
-            {% set nav_links = nav_links + [('usuarios', 'fa-user-shield', 'Usuarios')] %}
+            {% set nav_links = nav_links + [('formularios', 'fa-file-import', 'Formularios'), ('tramites', 'fa-folder-tree', 'Trámites'), ('campos', 'fa-list-ul', 'Campos'), ('usuarios', 'fa-user-shield', 'Usuarios')] %}
         {% endif %}
         {% for endpoint, icon, label in nav_links %}
         <a href="{{ url_for(endpoint) }}" style="

@@ -28,6 +28,13 @@ env/
 static/uploads/*
 !static/uploads/.gitkeep
 
+# Formularios subidos por el admin del estudio vía la UI (pueden contener
+# datos de clientes reales; no se versionan). Los PDFs/DOCX de ejemplo que
+# ya estaban en el repo siguen versionados porque git no desrastrea lo
+# que ya estaba agregado.
+datos/formularios/*.pdf
+datos/formularios/*.docx
+
 # Sistema
 .DS_Store
 Thumbs.db

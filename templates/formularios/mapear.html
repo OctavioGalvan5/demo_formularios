@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Mapear — {{ formulario.nombre }} — LegalForms{% endblock %}
+
+{% block extra_style %}
+.map-table { width: 100%; border-collapse: collapse; }
+.map-table th { text-align:left; padding: 10px 14px; font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; color:var(--texto3); border-bottom:2px solid var(--border); }
+.map-table td { padding: 9px 14px; border-bottom:1px solid var(--border); font-size:.87rem; vertical-align: middle; }
+.map-table tr:last-child td { border-bottom: none; }
+.campo-detectado { font-family: monospace; background:#f1f5f9; padding:3px 9px; border-radius:5px; font-size:.82rem; color:var(--texto2); }
+.map-table select { width:100%; }
+.map-table tr.sin-mapear .campo-detectado { background:#fffbeb; color:#92400e; }
+
+.tipo-icono { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.tipo-icono.pdf  { background: #fee2e2; color: #dc2626; }
+.tipo-icono.docx { background: #dbeafe; color: #2563eb; }
+.title-with-icon { display: flex; align-items: center; gap: 12px; }
+{% endblock %}
+
+{% block page_title %}
+<div class="page-title-bar">
+    <div class="page-title-left title-with-icon">
+        <div class="tipo-icono {{ formulario.tipo }}"><i class="fas {{ 'fa-file-pdf' if formulario.tipo == 'pdf' else 'fa-file-word' }}"></i></div>
+        <div>
+            <h1 class="page-title">{{ formulario.nombre }}</h1>
+            <span class="page-subtitle">Mapeo de campos — {{ formulario.tipo|upper }}</span>
+        </div>
+    </div>
+    <a href="{{ url_for('formularios') }}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Volver</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+            <div class="flash-msg flash-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    {% if not campos %}
+    <div class="alert alert-danger">
+        <i class="fas fa-triangle-exclamation"></i>
+        No se detectó ningún campo rellenable en este archivo.
+        {% if formulario.tipo == 'pdf' %}
+            Verificá que el PDF tenga un formulario interactivo (AcroForm) — un PDF escaneado plano no sirve para autocompletarse.
+        {% else %}
+            Verificá que el DOCX tenga marcadores tipo <code>{{ '{{numero_dni}}' }}</code> en el texto.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('formularios_mapear', id=formulario.id) }}">
+        <div class="card" style="margin-bottom:20px;">
+            <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-tag"></i> Datos del formulario</h2>
+            <div class="form-grid two">
+                <div class="fg">
+                    <label>Nombre a mostrar</label>
+                    <input type="text" name="nombre" value="{{ formulario.nombre }}" required>
+                </div>
+                <div class="fg">
+                    <label>Tipo de trámite</label>
+                    {% set nombres_tramite = tramites | map(attribute='nombre') | list %}
+                    <select name="categoria">
+                        <option value="">— Sin tipo de trámite —</option>
+                        {% if formulario.categoria and formulario.categoria not in nombres_tramite %}
+                        <option value="{{ formulario.categoria }}" selected>{{ formulario.categoria }} (no está en la lista)</option>
+                        {% endif %}
+                        {% for t in tramites %}
+                        <option value="{{ t.nombre }}" {% if formulario.categoria == t.nombre %}selected{% endif %}>{{ t.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {% if campos %}
+        <div class="card">
+            <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-sliders-h"></i> Mapeo de campos</h2>
+            <div class="info-box">
+                Para cada campo detectado en el archivo, elegí qué dato del cliente le corresponde.
+                Los que dejes en <strong>"No usar"</strong> no se completan al generar el documento.
+            </div>
+            <table class="map-table">
+                <thead>
+                    <tr>
+                        <th>Campo detectado</th>
+                        <th>Variable del sistema</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campo, actual in campos %}
+                    <tr class="{{ 'sin-mapear' if not actual else '' }}">
+                        <td><span class="campo-detectado">{{ campo }}</span></td>
+                        <td>
+                            <select name="campo__{{ campo }}">
+                                <option value="">— No usar —</option>
+                                <optgroup label="Datos estándar">
+                                    {% for var_key, var_label in variables_sistema.items() if var_key not in variables_personalizadas %}
+                                    <option value="{{ var_key }}" {% if actual == var_key %}selected{% endif %}>{{ var_label }} ({{ var_key }})</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% if variables_personalizadas %}
+                                <optgroup label="Campos personalizados">
+                                    {% for var_key, var_label in variables_sistema.items() if var_key in variables_personalizadas %}
+                                    <option value="{{ var_key }}" {% if actual == var_key %}selected{% endif %}>{{ var_label }} ({{ var_key }})</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="action-bar">
+            <a href="{{ url_for('formularios') }}" class="btn btn-outline">Cancelar</a>
+            <button type="submit" class="btn btn-green"><i class="fas fa-save"></i> Guardar mapeo</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

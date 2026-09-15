@@ -4,7 +4,7 @@
 {% block extra_style %}
 .hero {
     text-align: center;
-    padding: 48px 24px 32px;
+    padding: 40px 24px 8px;
 }
 .hero-title {
     font-family: 'Playfair Display', serif;
@@ -17,9 +17,9 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
     gap: 22px;
-    max-width: 700px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 0 24px 64px;
+    padding: 32px 24px 64px;
 }
 .module-card {
     background: var(--card); border: 1px solid var(--border);
@@ -58,6 +58,15 @@
         <p class="module-desc">Cargá los datos del cliente subiendo una foto del DNI. La IA extrae automáticamente nombre, DNI, CUIL, domicilio y demás datos. Luego seleccioná los formularios a generar y descargalos rellenados en un ZIP.</p>
         <span class="module-arrow">Ir al módulo <i class="fas fa-arrow-right"></i></span>
     </a>
+
+    {% if is_admin %}
+    <a href="{{ url_for('formularios') }}" class="module-card">
+        <div class="module-icon"><i class="fas fa-file-import"></i></div>
+        <p class="module-name">Formularios</p>
+        <p class="module-desc">Subí tus propios PDF (con campos rellenables) o DOCX (con marcadores <code>{{ '{{variable}}' }}</code>), mapealos contra los datos del cliente, y dalos de baja o reemplazalos cuando quieras.</p>
+        <span class="module-arrow">Ir al módulo <i class="fas fa-arrow-right"></i></span>
+    </a>
+    {% endif %}
 
 </div>
 {% endblock %}

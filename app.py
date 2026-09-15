@@ -9,16 +9,16 @@ from flask import (Flask, render_template, request, redirect, url_for,
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from sqlalchemy import text
-from pypdf import PdfReader, PdfWriter
 from xhtml2pdf import pisa
 
 from models.database import engine, init_db
 from services.consultas.consultas import (
-    openai_api_extract_data, update_cliente_in_db,
-    process_file, FORMULARIOS_MAPPING
+    openai_api_extract_data, update_cliente_in_db, process_file
 )
+from services.formularios import formularios as formularios_service
+from services import campos_personalizados as campos_service
+from services import tramites as tramites_service
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'legalforms-demo-secret-key')
@@ -356,6 +356,15 @@ def ver_cliente(id):
         data = request.form.to_dict()
         update_cliente_in_db(data)
 
+        valores_personalizados = {
+            campo['clave']: request.form.get(f"campo_personalizado__{campo['clave']}", '')
+            for campo in campos_service.listar_campos_personalizados()
+        }
+        campos_service.guardar_valores_cliente(id, valores_personalizados)
+
+        formulario_ids = [int(v) for v in request.form.getlist('formularios') if v.isdigit()]
+        formularios_service.set_formularios_seleccionados(id, formulario_ids)
+
         if accion == 'hacer_formulario':
             with engine.connect() as conn:
                 row = conn.execute(
@@ -364,90 +373,22 @@ def ver_cliente(id):
 
             nombre = row.get("nombre", "") or ""
             apellido = row.get("apellido", "") or ""
+            datos = formularios_service.build_datos_cliente(row)
+            datos.update(campos_service.obtener_valores_cliente(id))
 
-            def fmt(d, f):
-                if not d:
-                    return ""
-                if hasattr(d, 'strftime'):
-                    return d.strftime(f)
-                try:
-                    return datetime.strptime(str(d)[:10], '%Y-%m-%d').strftime(f)
-                except (ValueError, TypeError):
-                    return str(d)
-
-            datos = {
-                "nombre": nombre,
-                "apellido": apellido,
-                "numero_celular": row.get("numero_celular", "") or "",
-                "nombre_completo": f"{apellido} {nombre}",
-                "nombre_completo_2": f"{nombre} {apellido}",
-                "sexo": row.get("sexo", "") or "",
-                "sexo_femenino": row.get("sexo_femenino", "") or "",
-                "sexo_masculino": row.get("sexo_masculino", "") or "",
-                "numero_dni": row.get("numero_dni", "") or "",
-                "fecha_de_nacimiento_formato": fmt(row.get("fecha_de_nacimiento"), '%d/%m/%Y'),
-                "fecha_de_nacimiento": fmt(row.get("fecha_de_nacimiento"), '%d%m%Y'),
-                "fecha_de_nacimiento_dia": fmt(row.get("fecha_de_nacimiento"), '%d'),
-                "fecha_de_nacimiento_mes": fmt(row.get("fecha_de_nacimiento"), '%m'),
-                "fecha_de_nacimiento_año": fmt(row.get("fecha_de_nacimiento"), '%Y'),
-                "fecha_de_ingreso": fmt(row.get("fecha_de_ingreso"), '%d%m%y'),
-                "numero_cuil": row.get("numero_cuil", "") or "",
-                "cuil_inicio": (row.get("numero_cuil", "") or "")[:2],
-                "cuil_fin": (row.get("numero_cuil", "") or "")[-1:],
-                "nacionalidad": row.get("nacionalidad", "") or "",
-                "direccion": row.get("direccion", "") or "",
-                "numero_direccion": row.get("numero_direccion", "") or "",
-                "provincia": row.get("provincia", "") or "",
-                "departamento": row.get("departamento", "") or "",
-                "ciudad": row.get("ciudad", "") or "",
-                "donde_firmar": "X",
-            }
+            catalogo_activo = {f["id"]: f for f in formularios_service.listar_formularios(solo_activos=True)}
+            seleccionados = [catalogo_activo[fid] for fid in formulario_ids if fid in catalogo_activo]
 
             archivos_generados = {}
             lista_formularios = []
-            formularios_pdf = []
-            formularios_docx = []
 
-            for checkbox_name, info in FORMULARIOS_MAPPING.items():
-                if request.form.get(checkbox_name):
-                    lista_formularios.append(info["label"])
-                    if info["path"].endswith(".docx"):
-                        formularios_docx.append(info["path"])
-                    else:
-                        formularios_pdf.append(info["path"])
-
-            for formulario in formularios_pdf:
-                if not os.path.exists(formulario):
+            for formulario in seleccionados:
+                resultado = formularios_service.generar_archivo(formulario, datos)
+                if not resultado:
                     continue
-                reader = PdfReader(formulario)
-                writer = PdfWriter()
-                writer.clone_reader_document_root(reader)
-                if len(writer.pages) == 0:
-                    continue
-                try:
-                    writer.update_page_form_field_values(writer.pages[0], datos)
-                except Exception:
-                    pass
-                nombre_formulario = secure_filename(os.path.splitext(os.path.basename(formulario))[0])
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output = BytesIO()
-                writer.write(output)
-                output.seek(0)
-                archivos_generados[f"{nombre_formulario}_{timestamp}.pdf"] = output
-
-            if formularios_docx:
-                from docxtpl import DocxTemplate
-                for template_path in formularios_docx:
-                    if not os.path.exists(template_path):
-                        continue
-                    doc = DocxTemplate(template_path)
-                    doc.render(datos)
-                    output_word = BytesIO()
-                    doc.save(output_word)
-                    output_word.seek(0)
-                    nombre_base = os.path.splitext(os.path.basename(template_path))[0]
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    archivos_generados[f"{nombre_base}_{timestamp}.docx"] = output_word
+                nombre_archivo, contenido = resultado
+                archivos_generados[nombre_archivo] = contenido
+                lista_formularios.append(formulario["nombre"])
 
             rendered = render_template('consultas/formularios_impresos.html', filas=lista_formularios)
             pdf_lista_buffer = BytesIO()
@@ -496,7 +437,187 @@ def ver_cliente(id):
         else:
             data[campo] = str(val)[:10]
 
-    return render_template('consultas/ver_cliente.html', data_cliente=data)
+    formularios_agrupados = formularios_service.listar_formularios_agrupados(solo_activos=True)
+    formularios_seleccionados = formularios_service.obtener_formularios_seleccionados(id)
+    campos_personalizados = campos_service.listar_campos_personalizados()
+    valores_personalizados = campos_service.obtener_valores_cliente(id)
+
+    return render_template(
+        'consultas/ver_cliente.html',
+        data_cliente=data,
+        formularios_agrupados=formularios_agrupados,
+        formularios_seleccionados=formularios_seleccionados,
+        campos_personalizados=campos_personalizados,
+        valores_personalizados=valores_personalizados,
+    )
+
+
+# ---------------------------------------------------------------------------
+# FORMULARIOS (catálogo gestionable por el admin del estudio)
+# ---------------------------------------------------------------------------
+
+@app.route('/formularios')
+@admin_required
+def formularios():
+    lista = formularios_service.listar_formularios()
+    tramites = tramites_service.listar_tramites()
+    return render_template('formularios/formularios.html', formularios=lista, tramites=tramites)
+
+
+@app.route('/formularios/subir', methods=['POST'])
+@admin_required
+def formularios_subir():
+    archivo = request.files.get('archivo')
+    nombre = (request.form.get('nombre') or '').strip()
+    categoria = (request.form.get('categoria') or '').strip()
+
+    if not archivo or not archivo.filename:
+        flash('Tenés que seleccionar un archivo PDF o DOCX.', 'danger')
+        return redirect(url_for('formularios'))
+
+    new_id, campos, error = formularios_service.guardar_nuevo_formulario(
+        archivo, nombre, categoria, current_user.username
+    )
+    if error:
+        flash(error, 'danger')
+        return redirect(url_for('formularios'))
+
+    if not campos:
+        flash(
+            'El formulario se subió, pero no se detectaron campos rellenables. '
+            'Revisá que el PDF tenga un formulario (AcroForm) o que el DOCX use marcadores {{variable}}.',
+            'warning'
+        )
+    else:
+        flash(f'Formulario subido. Se detectaron {len(campos)} campo(s) — ahora mapealos.', 'success')
+
+    return redirect(url_for('formularios_mapear', id=new_id))
+
+
+@app.route('/formularios/<int:id>/mapear', methods=['GET', 'POST'])
+@admin_required
+def formularios_mapear(id):
+    formulario = formularios_service.obtener_formulario(id)
+    if not formulario:
+        flash('Formulario no encontrado.', 'danger')
+        return redirect(url_for('formularios'))
+
+    if request.method == 'POST':
+        nombre = (request.form.get('nombre') or '').strip() or formulario['nombre']
+        categoria = (request.form.get('categoria') or '').strip()
+        formularios_service.actualizar_datos_formulario(id, nombre, categoria)
+
+        nuevo_mapeo = {}
+        for campo in formulario['mapeo'].keys():
+            variable = request.form.get(f'campo__{campo}', '')
+            if variable:
+                nuevo_mapeo[campo] = variable
+        formularios_service.actualizar_mapeo(id, nuevo_mapeo)
+
+        flash('Mapeo guardado correctamente.', 'success')
+        return redirect(url_for('formularios'))
+
+    try:
+        path = os.path.join(formularios_service.FORMULARIOS_DIR, formulario['archivo'])
+        campos_detectados = formularios_service.detectar_campos(path, formulario['tipo'])
+    except Exception:
+        campos_detectados = list(formulario['mapeo'].keys())
+
+    mapeo_actual = formulario['mapeo']
+    campos = [(c, mapeo_actual.get(c, '')) for c in campos_detectados]
+    vocabulario, claves_personalizadas = campos_service.vocabulario_completo()
+    tramites = tramites_service.listar_tramites()
+
+    return render_template(
+        'formularios/mapear.html',
+        formulario=formulario,
+        campos=campos,
+        variables_sistema=vocabulario,
+        variables_personalizadas=claves_personalizadas,
+        tramites=tramites,
+    )
+
+
+@app.route('/formularios/<int:id>/toggle_activo', methods=['POST'])
+@admin_required
+def formularios_toggle_activo(id):
+    formulario = formularios_service.obtener_formulario(id)
+    if not formulario:
+        flash('Formulario no encontrado.', 'danger')
+        return redirect(url_for('formularios'))
+    formularios_service.set_activo(id, not formulario['activo'])
+    flash('Formulario reactivado.' if not formulario['activo'] else 'Formulario dado de baja.', 'success')
+    return redirect(url_for('formularios'))
+
+
+@app.route('/formularios/<int:id>/eliminar', methods=['POST'])
+@admin_required
+def formularios_eliminar(id):
+    formularios_service.eliminar_formulario(id)
+    flash('Formulario eliminado.', 'success')
+    return redirect(url_for('formularios'))
+
+
+# ---------------------------------------------------------------------------
+# CAMPOS PERSONALIZADOS (vocabulario extra para el mapeo, solo admin)
+# ---------------------------------------------------------------------------
+
+@app.route('/campos')
+@admin_required
+def campos():
+    lista = campos_service.listar_campos_personalizados()
+    return render_template('campos/campos.html', campos=lista)
+
+
+@app.route('/campos/crear', methods=['POST'])
+@admin_required
+def campos_crear():
+    etiqueta = request.form.get('etiqueta', '')
+    new_id, error = campos_service.crear_campo_personalizado(etiqueta, current_user.username)
+    if error:
+        flash(error, 'danger')
+    else:
+        flash(f'Campo "{etiqueta}" creado. Ya está disponible en Datos Personales y en el mapeo de formularios.', 'success')
+    return redirect(url_for('campos'))
+
+
+@app.route('/campos/<int:id>/eliminar', methods=['POST'])
+@admin_required
+def campos_eliminar(id):
+    campos_service.eliminar_campo_personalizado(id)
+    flash('Campo eliminado.', 'success')
+    return redirect(url_for('campos'))
+
+
+# ---------------------------------------------------------------------------
+# TIPOS DE TRÁMITE (lista controlada para categorizar formularios, solo admin)
+# ---------------------------------------------------------------------------
+
+@app.route('/tramites')
+@admin_required
+def tramites():
+    lista = tramites_service.listar_tramites()
+    return render_template('tramites/tramites.html', tramites=lista)
+
+
+@app.route('/tramites/crear', methods=['POST'])
+@admin_required
+def tramites_crear():
+    nombre = request.form.get('nombre', '')
+    new_id, error = tramites_service.crear_tramite(nombre, current_user.username)
+    if error:
+        flash(error, 'danger')
+    else:
+        flash(f'Tipo de trámite "{nombre}" creado.', 'success')
+    return redirect(url_for('tramites'))
+
+
+@app.route('/tramites/<int:id>/eliminar', methods=['POST'])
+@admin_required
+def tramites_eliminar(id):
+    tramites_service.eliminar_tramite(id)
+    flash('Tipo de trámite eliminado.', 'success')
+    return redirect(url_for('tramites'))
 
 
 # ---------------------------------------------------------------------------
