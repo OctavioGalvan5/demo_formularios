@@ -14,6 +14,12 @@
 .tipo-icono.pdf  { background: #fee2e2; color: #dc2626; }
 .tipo-icono.docx { background: #dbeafe; color: #2563eb; }
 .title-with-icon { display: flex; align-items: center; gap: 12px; }
+
+.card-header { padding: 14px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: #fafcff; border-radius: var(--radius) var(--radius) 0 0; }
+.card-header strong { font-size: .88rem; color: var(--texto); font-weight: 600; }
+.card-header .count { font-size: .78rem; color: var(--azul); margin-left: auto; background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; }
+.card-table { padding: 0; overflow: hidden; }
+.card-table .info-box { margin: 20px 22px 0; }
 {% endblock %}
 
 {% block page_title %}
@@ -75,13 +81,23 @@
         </div>
 
         {% if campos %}
-        <div class="card">
-            <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-sliders-h"></i> Mapeo de campos</h2>
+        <div class="card card-table">
+            <div class="card-header">
+                <i class="fas fa-sliders-h" style="color:var(--azul);"></i>
+                <strong>Mapeo de campos</strong>
+                <span class="count" id="countCampoMapeo">{{ campos|length }} campo{{ 's' if campos|length != 1 else '' }}</span>
+            </div>
             <div class="info-box">
                 Para cada campo detectado en el archivo, elegí qué dato del cliente le corresponde.
                 Los que dejes en <strong>"No usar"</strong> no se completan al generar el documento.
             </div>
-            <table class="map-table">
+            <div class="tabla-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="buscarCampoMapeo" placeholder="Buscar campo detectado...">
+                </div>
+            </div>
+            <table class="map-table" id="tablaCampoMapeo">
                 <thead>
                     <tr>
                         <th>Campo detectado</th>
@@ -91,7 +107,7 @@
                 <tbody>
                     {% for campo, actual in campos %}
                     <tr class="{{ 'sin-mapear' if not actual else '' }}">
-                        <td><span class="campo-detectado">{{ campo }}</span></td>
+                        <td><span class="campo-detectado nombre-texto">{{ campo }}</span></td>
                         <td>
                             <select name="campo__{{ campo }}">
                                 <option value="">— No usar —</option>
@@ -113,6 +129,11 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="empty" id="emptyCampoMapeo" hidden>
+                <i class="fas fa-search"></i>
+                Ningún campo detectado coincide con la búsqueda.
+            </div>
+            <div class="paginacion" id="pagCampoMapeo"></div>
         </div>
         {% endif %}
 
@@ -122,4 +143,21 @@
         </div>
     </form>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tabla-buscable.js') }}"></script>
+<script>
+    {% if campos %}
+    inicializarTablaBuscable({
+        inputId: 'buscarCampoMapeo',
+        filaSelector: '#tablaCampoMapeo tbody tr',
+        textoSelector: '.nombre-texto',
+        porPagina: 20,
+        contadorId: 'countCampoMapeo',
+        paginacionId: 'pagCampoMapeo',
+        vacioId: 'emptyCampoMapeo',
+    });
+    {% endif %}
+</script>
 {% endblock %}

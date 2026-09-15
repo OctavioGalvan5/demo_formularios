@@ -141,6 +141,18 @@
 
         .action-bar { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; background: white; border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); position: sticky; bottom: 20px; margin-top: 20px; }
 
+        .search-box { display: flex; align-items: center; gap: 8px; background: white; border: 1.5px solid var(--border2); border-radius: 7px; padding: 8px 14px; width: 100%; max-width: 340px; }
+        .search-box i { color: var(--texto3); }
+        .search-box input { border: none; outline: none; font-family: inherit; font-size: .9rem; color: var(--texto); width: 100%; background: transparent; }
+
+        .tabla-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 22px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .tabla-toolbar .count { font-size: .78rem; color: var(--azul); background: var(--azul-light); padding: 2px 10px; border-radius: 99px; font-weight: 600; white-space: nowrap; }
+
+        .paginacion { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--border); }
+        .paginacion:empty { display: none; padding: 0; border-top: none; }
+        .pag-btn { min-width: 34px; padding: 6px 10px; }
+        .pag-info { font-size: .8rem; color: var(--texto2); white-space: nowrap; }
+
         #lov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 999; align-items: center; justify-content: center; }
         #lov.show { display: flex; }
         .lbox { background: white; border-radius: var(--radius); padding: 28px 36px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }

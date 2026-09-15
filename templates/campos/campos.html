@@ -51,11 +51,17 @@
             <div class="card-header">
                 <i class="fas fa-list-ul" style="color:var(--azul);"></i>
                 <strong>Campos personalizados</strong>
-                <span class="count">{{ campos|length }} campo{{ 's' if campos|length != 1 else '' }}</span>
+                <span class="count" id="countCampos">{{ campos|length }} campo{{ 's' if campos|length != 1 else '' }}</span>
             </div>
 
             {% if campos %}
-            <table class="data-table">
+            <div class="tabla-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="buscarCampos" placeholder="Buscar campo personalizado...">
+                </div>
+            </div>
+            <table class="data-table" id="tablaCampos">
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -66,7 +72,7 @@
                 <tbody>
                     {% for c in campos %}
                     <tr>
-                        <td class="nombre">{{ c.etiqueta }}</td>
+                        <td class="nombre"><span class="nombre-texto">{{ c.etiqueta }}</span></td>
                         <td><span class="campo-detectado" style="font-family:monospace;background:#f1f5f9;padding:3px 9px;border-radius:5px;font-size:.82rem;color:var(--texto2);">{{ c.clave }}</span></td>
                         <td style="text-align:right;">
                             <form method="POST" action="{{ url_for('campos_eliminar', id=c.id) }}" style="margin:0;display:inline;"
@@ -80,6 +86,11 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="empty" id="emptyCampos" hidden>
+                <i class="fas fa-search"></i>
+                Ningún campo coincide con la búsqueda.
+            </div>
+            <div class="paginacion" id="pagCampos"></div>
             {% else %}
             <div class="empty">
                 <i class="fas fa-list-ul"></i>
@@ -89,5 +100,67 @@
         </div>
 
     </div>
+
+    <div class="card card-table" style="margin-top:22px;">
+        <div class="card-header">
+            <i class="fas fa-table-list" style="color:var(--azul);"></i>
+            <strong>Variables estándar del sistema</strong>
+            <span class="count" id="countEstandar">{{ variables_sistema|length }} variables</span>
+        </div>
+        <div class="tabla-toolbar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="buscarEstandar" placeholder="Buscar variable estándar...">
+            </div>
+        </div>
+        <table class="data-table" id="tablaEstandar">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Variable</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for clave, etiqueta in variables_sistema.items() %}
+                <tr>
+                    <td class="nombre"><span class="nombre-texto">{{ etiqueta }}</span></td>
+                    <td><span class="campo-detectado" style="font-family:monospace;background:#f1f5f9;padding:3px 9px;border-radius:5px;font-size:.82rem;color:var(--texto2);">{{ clave }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="empty" id="emptyEstandar" hidden>
+            <i class="fas fa-search"></i>
+            Ninguna variable coincide con la búsqueda.
+        </div>
+        <div class="paginacion" id="pagEstandar"></div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tabla-buscable.js') }}"></script>
+<script>
+    {% if campos %}
+    inicializarTablaBuscable({
+        inputId: 'buscarCampos',
+        filaSelector: '#tablaCampos tbody tr',
+        textoSelector: '.nombre-texto',
+        porPagina: 10,
+        contadorId: 'countCampos',
+        paginacionId: 'pagCampos',
+        vacioId: 'emptyCampos',
+    });
+    {% endif %}
+
+    inicializarTablaBuscable({
+        inputId: 'buscarEstandar',
+        filaSelector: '#tablaEstandar tbody tr',
+        textoSelector: '.nombre-texto',
+        porPagina: 12,
+        contadorId: 'countEstandar',
+        paginacionId: 'pagEstandar',
+        vacioId: 'emptyEstandar',
+    });
+</script>
 {% endblock %}

@@ -51,11 +51,17 @@
             <div class="card-header">
                 <i class="fas fa-folder-tree" style="color:var(--azul);"></i>
                 <strong>Tipos de trámite</strong>
-                <span class="count">{{ tramites|length }} tipo{{ 's' if tramites|length != 1 else '' }}</span>
+                <span class="count" id="countTramites">{{ tramites|length }} tipo{{ 's' if tramites|length != 1 else '' }}</span>
             </div>
 
             {% if tramites %}
-            <table class="data-table">
+            <div class="tabla-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="buscarTramites" placeholder="Buscar tipo de trámite...">
+                </div>
+            </div>
+            <table class="data-table" id="tablaTramites">
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -65,7 +71,7 @@
                 <tbody>
                     {% for t in tramites %}
                     <tr>
-                        <td class="nombre">{{ t.nombre }}</td>
+                        <td class="nombre"><span class="nombre-texto">{{ t.nombre }}</span></td>
                         <td style="text-align:right;">
                             <form method="POST" action="{{ url_for('tramites_eliminar', id=t.id) }}" style="margin:0;display:inline;"
                                   onsubmit="return confirm('¿Eliminar el tipo de trámite &quot;{{ t.nombre|e }}&quot;? Los formularios que ya lo usaban conservan el nombre, pero no vas a poder volver a elegirlo de la lista.');">
@@ -78,6 +84,11 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="empty" id="emptyTramites" hidden>
+                <i class="fas fa-search"></i>
+                Ningún tipo de trámite coincide con la búsqueda.
+            </div>
+            <div class="paginacion" id="pagTramites"></div>
             {% else %}
             <div class="empty">
                 <i class="fas fa-folder-tree"></i>
@@ -88,4 +99,21 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/tabla-buscable.js') }}"></script>
+<script>
+    {% if tramites %}
+    inicializarTablaBuscable({
+        inputId: 'buscarTramites',
+        filaSelector: '#tablaTramites tbody tr',
+        textoSelector: '.nombre-texto',
+        porPagina: 10,
+        contadorId: 'countTramites',
+        paginacionId: 'pagTramites',
+        vacioId: 'emptyTramites',
+    });
+    {% endif %}
+</script>
 {% endblock %}

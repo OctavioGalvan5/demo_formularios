@@ -105,11 +105,17 @@
             <div class="card-header">
                 <i class="fas fa-folder-open" style="color:var(--azul);"></i>
                 <strong>Catálogo</strong>
-                <span class="count">{{ formularios|length }} formulario{{ 's' if formularios|length != 1 else '' }}</span>
+                <span class="count" id="countFormularios">{{ formularios|length }} formulario{{ 's' if formularios|length != 1 else '' }}</span>
             </div>
 
             {% if formularios %}
-            <table class="data-table">
+            <div class="tabla-toolbar">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="buscarFormularios" placeholder="Buscar formulario por nombre...">
+                </div>
+            </div>
+            <table class="data-table" id="tablaFormularios">
                 <thead>
                     <tr>
                         <th>Formulario</th>
@@ -126,7 +132,7 @@
                             <div class="nombre-archivo">
                                 <div class="icono-tipo {{ f.tipo }}"><i class="fas {{ 'fa-file-pdf' if f.tipo == 'pdf' else 'fa-file-word' }}"></i></div>
                                 <div>
-                                    {{ f.nombre }}
+                                    <span class="nombre-texto">{{ f.nombre }}</span>
                                     <div class="cat">{{ f.tipo|upper }}</div>
                                 </div>
                             </div>
@@ -172,6 +178,11 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="empty" id="emptyFormularios" hidden>
+                <i class="fas fa-search"></i>
+                Ningún formulario coincide con la búsqueda.
+            </div>
+            <div class="paginacion" id="pagFormularios"></div>
             {% else %}
             <div class="empty">
                 <i class="fas fa-file-import"></i>
@@ -185,7 +196,20 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/tabla-buscable.js') }}"></script>
 <script>
+    {% if formularios %}
+    inicializarTablaBuscable({
+        inputId: 'buscarFormularios',
+        filaSelector: '#tablaFormularios tbody tr',
+        textoSelector: '.nombre-texto',
+        porPagina: 10,
+        contadorId: 'countFormularios',
+        paginacionId: 'pagFormularios',
+        vacioId: 'emptyFormularios',
+    });
+    {% endif %}
+
     const dropZone   = document.getElementById('dropZone');
     const fileInput  = document.getElementById('fileInput');
     const fileList   = document.getElementById('fileList');

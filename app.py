@@ -566,7 +566,11 @@ def formularios_eliminar(id):
 @admin_required
 def campos():
     lista = campos_service.listar_campos_personalizados()
-    return render_template('campos/campos.html', campos=lista)
+    return render_template(
+        'campos/campos.html',
+        campos=lista,
+        variables_sistema=formularios_service.VARIABLES_SISTEMA,
+    )
 
 
 @app.route('/campos/crear', methods=['POST'])
