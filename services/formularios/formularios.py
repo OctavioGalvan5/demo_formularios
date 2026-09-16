@@ -1,7 +1,6 @@
 import os
 import json
 import uuid
-import shutil
 from io import BytesIO
 from datetime import datetime
 
@@ -11,12 +10,20 @@ from docxtpl import DocxTemplate
 from werkzeug.utils import secure_filename
 
 from models.database import engine
+from services import almacenamiento
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Carpeta local de origen para la importación masiva única (datos/formularios/
+# con las plantillas que ya venían con el proyecto). Los formularios subidos
+# desde la app viven en MinIO (services/almacenamiento.py), no acá.
 FORMULARIOS_DIR = os.path.join(BASE_DIR, 'datos', 'formularios')
 os.makedirs(FORMULARIOS_DIR, exist_ok=True)
 
 EXTENSIONES_PERMITIDAS = {'.pdf': 'pdf', '.docx': 'docx'}
+CONTENT_TYPES = {
+    'pdf': 'application/pdf',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
 
 # Vocabulario fijo de variables del sistema. El admin del estudio mapea los
 # campos detectados en cada PDF/DOCX que sube contra estas claves; el
@@ -97,27 +104,38 @@ def build_datos_cliente(row):
 
 
 # ---------------------------------------------------------------------------
-# Detección de campos
+# Detección de campos (a partir de los bytes del archivo, sin depender de
+# dónde esté guardado: sirve tanto para un upload recién llegado como para
+# algo ya leído de MinIO)
 # ---------------------------------------------------------------------------
 
-def detectar_campos_pdf(path):
-    reader = PdfReader(path)
+def detectar_campos_pdf(datos_bytes):
+    reader = PdfReader(BytesIO(datos_bytes))
     fields = reader.get_fields()
     if not fields:
         return []
     return list(fields.keys())
 
 
-def detectar_campos_docx(path):
-    doc = DocxTemplate(path)
+def detectar_campos_docx(datos_bytes):
+    doc = DocxTemplate(BytesIO(datos_bytes))
     variables = doc.get_undeclared_template_variables()
     return sorted(variables)
 
 
-def detectar_campos(path, tipo):
+def detectar_campos(datos_bytes, tipo):
     if tipo == 'pdf':
-        return detectar_campos_pdf(path)
-    return detectar_campos_docx(path)
+        return detectar_campos_pdf(datos_bytes)
+    return detectar_campos_docx(datos_bytes)
+
+
+def detectar_campos_de_formulario(formulario):
+    """Vuelve a detectar los campos del archivo ya guardado en MinIO (para
+    refrescar la pantalla de mapeo). Devuelve [] si el objeto no está."""
+    datos_bytes = almacenamiento.leer(formulario["archivo"])
+    if datos_bytes is None:
+        return []
+    return detectar_campos(datos_bytes, formulario["tipo"])
 
 
 # ---------------------------------------------------------------------------
@@ -203,7 +221,7 @@ def _insertar_catalogo(nombre, categoria, tipo, stored_name, nombre_original, ma
 
 
 def guardar_nuevo_formulario(file_storage, nombre, categoria, creado_por):
-    """Guarda el archivo subido desde la web en disco y crea el registro en
+    """Sube a MinIO el archivo recibido desde la web y crea el registro en
     el catálogo. Devuelve (id_nuevo, campos_detectados, error)."""
     filename = file_storage.filename or ''
     ext = os.path.splitext(filename)[1].lower()
@@ -211,15 +229,18 @@ def guardar_nuevo_formulario(file_storage, nombre, categoria, creado_por):
         return None, [], "Solo se aceptan archivos PDF o DOCX."
 
     tipo = EXTENSIONES_PERMITIDAS[ext]
-    stored_name = f"{uuid.uuid4().hex}{ext}"
-    dest_path = os.path.join(FORMULARIOS_DIR, stored_name)
-    file_storage.save(dest_path)
+    datos_bytes = file_storage.read()
 
     try:
-        campos = detectar_campos(dest_path, tipo)
+        campos = detectar_campos(datos_bytes, tipo)
     except Exception as e:
-        os.remove(dest_path)
         return None, [], f"No se pudo leer el archivo: {e}"
+
+    stored_name = f"{uuid.uuid4().hex}{ext}"
+    try:
+        almacenamiento.guardar(stored_name, datos_bytes, content_type=CONTENT_TYPES[tipo])
+    except Exception as e:
+        return None, [], f"No se pudo guardar el archivo en el almacenamiento: {e}"
 
     new_id = _insertar_catalogo(
         nombre or os.path.splitext(filename)[0], categoria, tipo,
@@ -229,25 +250,25 @@ def guardar_nuevo_formulario(file_storage, nombre, categoria, creado_por):
 
 
 def importar_formulario_desde_disco(path, nombre=None, categoria='', creado_por='import'):
-    """Registra en el catálogo un PDF/DOCX que ya está en FORMULARIOS_DIR
-    (por ejemplo, plantillas que venían con la demo), sin pasar por un
-    upload web. Copia el archivo a un nombre interno propio para no
-    depender del archivo original. Devuelve (id_nuevo, campos, error)."""
+    """Sube a MinIO un PDF/DOCX que está en el disco local (por ejemplo, una
+    plantilla que ya venía con el proyecto en datos/formularios/) y lo da de
+    alta en el catálogo. Devuelve (id_nuevo, campos, error)."""
     filename = os.path.basename(path)
     ext = os.path.splitext(filename)[1].lower()
     if ext not in EXTENSIONES_PERMITIDAS:
         return None, [], f"Extensión no soportada: {ext}"
 
     tipo = EXTENSIONES_PERMITIDAS[ext]
-    stored_name = f"{uuid.uuid4().hex}{ext}"
-    dest_path = os.path.join(FORMULARIOS_DIR, stored_name)
-    shutil.copyfile(path, dest_path)
+    with open(path, 'rb') as f:
+        datos_bytes = f.read()
 
     try:
-        campos = detectar_campos(dest_path, tipo)
+        campos = detectar_campos(datos_bytes, tipo)
     except Exception as e:
-        os.remove(dest_path)
         return None, [], str(e)
+
+    stored_name = f"{uuid.uuid4().hex}{ext}"
+    almacenamiento.guardar(stored_name, datos_bytes, content_type=CONTENT_TYPES[tipo])
 
     new_id = _insertar_catalogo(
         nombre or _humanizar_nombre(filename), categoria, tipo,
@@ -288,12 +309,7 @@ def eliminar_formulario(formulario_id):
         )
         conn.execute(text("DELETE FROM demo_formularios WHERE id = :id"), {"id": formulario_id})
     if formulario:
-        path = os.path.join(FORMULARIOS_DIR, formulario["archivo"])
-        try:
-            if os.path.exists(path):
-                os.remove(path)
-        except OSError:
-            pass
+        almacenamiento.eliminar(formulario["archivo"])
 
 
 # ---------------------------------------------------------------------------
@@ -327,9 +343,9 @@ def set_formularios_seleccionados(cliente_id, formulario_ids):
 
 def generar_archivo(formulario, datos_sistema):
     """formulario: dict del catálogo (con 'mapeo' ya parseado a dict).
-    Devuelve (nombre_archivo, BytesIO) o None si el archivo original no existe."""
-    path = os.path.join(FORMULARIOS_DIR, formulario["archivo"])
-    if not os.path.exists(path):
+    Devuelve (nombre_archivo, BytesIO) o None si el archivo no está en MinIO."""
+    datos_bytes = almacenamiento.leer(formulario["archivo"])
+    if datos_bytes is None:
         return None
 
     datos_mapeados = {
@@ -342,7 +358,7 @@ def generar_archivo(formulario, datos_sistema):
     base_nombre = secure_filename(formulario["nombre"]) or f"formulario_{formulario['id']}"
 
     if formulario["tipo"] == "pdf":
-        reader = PdfReader(path)
+        reader = PdfReader(BytesIO(datos_bytes))
         writer = PdfWriter()
         writer.clone_reader_document_root(reader)
         try:
@@ -359,7 +375,7 @@ def generar_archivo(formulario, datos_sistema):
         output.seek(0)
         return f"{base_nombre}_{timestamp}.pdf", output
 
-    doc = DocxTemplate(path)
+    doc = DocxTemplate(BytesIO(datos_bytes))
     doc.render(datos_mapeados)
     output = BytesIO()
     doc.save(output)

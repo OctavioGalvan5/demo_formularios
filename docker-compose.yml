@@ -7,3 +7,6 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    # Los formularios que suba el admin se guardan en MinIO (ver .env), no en
+    # el disco del contenedor — no hace falta ningún volumen para que
+    # sobrevivan a un rebuild/recreate.

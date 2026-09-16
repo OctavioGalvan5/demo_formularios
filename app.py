@@ -518,8 +518,9 @@ def formularios_mapear(id):
         return redirect(url_for('formularios'))
 
     try:
-        path = os.path.join(formularios_service.FORMULARIOS_DIR, formulario['archivo'])
-        campos_detectados = formularios_service.detectar_campos(path, formulario['tipo'])
+        campos_detectados = formularios_service.detectar_campos_de_formulario(formulario)
+        if not campos_detectados:
+            campos_detectados = list(formulario['mapeo'].keys())
     except Exception:
         campos_detectados = list(formulario['mapeo'].keys())
 
