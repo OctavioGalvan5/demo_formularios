@@ -78,6 +78,22 @@
                     </select>
                 </div>
             </div>
+            {% if tramites %}
+            <div class="fg" style="margin-top:16px;">
+                <label>Incluir en el bundle de (opcional)</label>
+                <small style="display:block;font-size:.75rem;color:var(--texto3);margin-bottom:6px;">
+                    Al elegir uno de estos trámites en la ficha de un cliente, este formulario se va a autoseleccionar junto con el resto del bundle.
+                </small>
+                <div class="checkbox-grid" style="grid-template-columns:1fr 1fr;">
+                    {% for t in tramites %}
+                    <label class="checkbox-item {% if t.id in bundle_actual %}checked{% endif %}">
+                        <input type="checkbox" name="bundles" value="{{ t.id }}" {% if t.id in bundle_actual %}checked{% endif %}>
+                        {{ t.nombre }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         {% if campos %}

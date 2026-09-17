@@ -441,6 +441,8 @@ def ver_cliente(id):
     formularios_seleccionados = formularios_service.obtener_formularios_seleccionados(id)
     campos_personalizados = campos_service.listar_campos_personalizados()
     valores_personalizados = campos_service.obtener_valores_cliente(id)
+    tramites = tramites_service.listar_tramites()
+    bundles_por_tramite = tramites_service.obtener_formularios_por_tramite()
 
     return render_template(
         'consultas/ver_cliente.html',
@@ -449,6 +451,8 @@ def ver_cliente(id):
         formularios_seleccionados=formularios_seleccionados,
         campos_personalizados=campos_personalizados,
         valores_personalizados=valores_personalizados,
+        tramites=tramites,
+        bundles_por_tramite=bundles_por_tramite,
     )
 
 
@@ -470,6 +474,7 @@ def formularios_subir():
     archivo = request.files.get('archivo')
     nombre = (request.form.get('nombre') or '').strip()
     categoria = (request.form.get('categoria') or '').strip()
+    bundles = request.form.getlist('bundles')
 
     if not archivo or not archivo.filename:
         flash('Tenés que seleccionar un archivo PDF o DOCX.', 'danger')
@@ -481,6 +486,8 @@ def formularios_subir():
     if error:
         flash(error, 'danger')
         return redirect(url_for('formularios'))
+
+    tramites_service.set_bundle_de_formulario(new_id, bundles)
 
     if not campos:
         flash(
@@ -506,6 +513,7 @@ def formularios_mapear(id):
         nombre = (request.form.get('nombre') or '').strip() or formulario['nombre']
         categoria = (request.form.get('categoria') or '').strip()
         formularios_service.actualizar_datos_formulario(id, nombre, categoria)
+        tramites_service.set_bundle_de_formulario(id, request.form.getlist('bundles'))
 
         nuevo_mapeo = {}
         for campo in formulario['mapeo'].keys():
@@ -528,6 +536,7 @@ def formularios_mapear(id):
     campos = [(c, mapeo_actual.get(c, '')) for c in campos_detectados]
     vocabulario, claves_personalizadas = campos_service.vocabulario_completo()
     tramites = tramites_service.listar_tramites()
+    bundle_actual = tramites_service.obtener_bundle_de_formulario(id)
 
     return render_template(
         'formularios/mapear.html',
@@ -536,6 +545,7 @@ def formularios_mapear(id):
         variables_sistema=vocabulario,
         variables_personalizadas=claves_personalizadas,
         tramites=tramites,
+        bundle_actual=bundle_actual,
     )
 
 

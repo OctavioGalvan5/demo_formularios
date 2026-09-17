@@ -307,6 +307,9 @@ def eliminar_formulario(formulario_id):
         conn.execute(
             text("DELETE FROM demo_cliente_formularios WHERE formulario_id = :id"), {"id": formulario_id}
         )
+        conn.execute(
+            text("DELETE FROM demo_tramite_formularios WHERE formulario_id = :id"), {"id": formulario_id}
+        )
         conn.execute(text("DELETE FROM demo_formularios WHERE id = :id"), {"id": formulario_id})
     if formulario:
         almacenamiento.eliminar(formulario["archivo"])

@@ -128,11 +128,24 @@ def init_db():
             )
         """))
 
+        # Bundle de formularios por tipo de trámite: al elegir un trámite en
+        # la ficha del cliente, se autoseleccionan los formularios acá
+        # vinculados (pueden ser de cualquier categoría, no solo la propia).
+        conn.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS demo_tramite_formularios (
+                {_id},
+                tramite_id {_fk} NOT NULL,
+                formulario_id {_fk} NOT NULL,
+                UNIQUE(tramite_id, formulario_id)
+            )
+        """))
+
 def drop_demo_tables():
     """Utilidad para limpiar las tablas demo cuando termine la demo."""
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS demo_cliente_variables"))
         conn.execute(text("DROP TABLE IF EXISTS demo_variables_personalizadas"))
+        conn.execute(text("DROP TABLE IF EXISTS demo_tramite_formularios"))
         conn.execute(text("DROP TABLE IF EXISTS demo_tipos_tramite"))
         conn.execute(text("DROP TABLE IF EXISTS demo_cliente_formularios"))
         conn.execute(text("DROP TABLE IF EXISTS demo_formularios"))

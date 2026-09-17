@@ -100,6 +100,22 @@
                 <h2 class="card-title"><span class="card-title-bar"></span><i class="fas fa-file-contract"></i> Formularios a Generar</h2>
                 <p style="font-size:.85rem;color:var(--texto3);margin:0 0 16px">Marcá los formularios a incluir en el ZIP. El catálogo lo administra el admin del estudio desde <a href="{{ url_for('formularios') }}">Formularios</a>.</p>
 
+                {% set tramites_con_bundle = tramites | selectattr('id', 'in', bundles_por_tramite.keys()) | list %}
+                {% if tramites_con_bundle %}
+                <div class="section-label">Tipo de trámite (autoselecciona formularios)</div>
+                <div class="checkbox-grid" id="bundleTramites" style="margin-bottom:18px;">
+                    {% for t in tramites_con_bundle %}
+                    <label class="checkbox-item">
+                        <input type="checkbox" data-bundle="{{ t.id }}">
+                        {{ t.nombre }}
+                    </label>
+                    {% endfor %}
+                </div>
+                <small style="display:block;font-size:.75rem;color:var(--texto3);margin:-12px 0 16px;">
+                    Tildar un trámite marca automáticamente sus formularios habituales — los podés seguir ajustando a mano.
+                </small>
+                {% endif %}
+
                 {% if formularios_agrupados %}
                     {% for categoria, lista in formularios_agrupados.items() %}
                     <div class="section-label">{{ categoria }}</div>
@@ -144,6 +160,21 @@
     document.querySelectorAll('.checkbox-item input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', function() {
             this.closest('.checkbox-item').classList.toggle('checked', this.checked);
+        });
+    });
+
+    const bundlesPorTramite = {{ bundles_por_tramite | tojson }};
+    document.querySelectorAll('#bundleTramites input[data-bundle]').forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (!this.checked) return;
+            const ids = bundlesPorTramite[this.dataset.bundle] || [];
+            ids.forEach(fid => {
+                const target = document.querySelector(`input[name="formularios"][value="${fid}"]`);
+                if (target && !target.checked) {
+                    target.checked = true;
+                    target.closest('.checkbox-item').classList.add('checked');
+                }
+            });
         });
     });
 
